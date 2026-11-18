@@ -35,7 +35,7 @@ class World {
         this.apexVortex = null;
 
         // Level 4: Apex Core
-        this.apexPos = new THREE.Vector3(190, 80, 0);
+        this.apexPos = new THREE.Vector3(400, 115, 0);
         this.apexCore = null;
         this.apexReached = false;
 
@@ -149,97 +149,101 @@ class World {
     buildProgressiveWorld() {
         // ==========================================
         // NIVELL 1: EL DESPERTAR RÚNIC (Pos: 0, 0, 0)
+        // Gran Illa Majestuosa: Radi 48, Alçada 18 (com al primer joc!)
         // ==========================================
-        this.createFloatingIsland(new THREE.Vector3(0, 0, 0), 28, 12);
+        this.createFloatingIsland(new THREE.Vector3(0, 0, 0), 48, 18);
         this.createTempleRuins(new THREE.Vector3(0, 0, 0));
 
         // Gate 1 (Forcefield Barrier blocking exit to Level 2)
         this.gate1 = this.createEnergyGate(
-            new THREE.Vector3(26, 3, 0),
-            new THREE.Vector3(1.4, 6.5, 9),
+            new THREE.Vector3(42, 4, 0),
+            new THREE.Vector3(2, 7.5, 12),
             0xff007b,
             "Barrera Rúnica 1"
         );
 
         // Altar Pad on Island 1 (Discharges 3 Relic Keys)
-        this.altarPad = this.createAltarPad(new THREE.Vector3(16, 1.5, 0));
+        this.altarPad = this.createAltarPad(new THREE.Vector3(25, 1.5, 0));
 
-        // 3 Relic Keys hidden on Island 1
-        this.createRelicKey(0, new THREE.Vector3(0, 12.5, 0));       // On top of central temple column!
-        this.createRelicKey(1, new THREE.Vector3(-14, 3.2, 14));     // Behind stone arch
-        this.createRelicKey(2, new THREE.Vector3(-18, 2.5, -16));    // On rocky ledge
+        // 3 Relic Keys hidden across Island 1
+        this.createRelicKey(0, new THREE.Vector3(0, 13.5, 0));       // On top of central temple colonnade!
+        this.createRelicKey(1, new THREE.Vector3(-22, 4.2, 22));     // Eastern ancient ruins
+        this.createRelicKey(2, new THREE.Vector3(-26, 3.5, -24));    // Western clifftop overlook
 
-        // Jump Pad 1 (behind Gate 1, launches to Level 2 when Gate 1 opens)
-        this.jumpPad1 = this.createJumpPad(new THREE.Vector3(30, 1.5, 0), 32);
+        // Jump Pad 1 (behind Gate 1, launches to Stepping Platforms)
+        this.jumpPad1 = this.createJumpPad(new THREE.Vector3(46, 1.5, 0), 34);
+
+        // Stepping Stone Islands between Level 1 and Level 2 (Large, non-intersecting 16x16 platforms)
+        this.createPlatform(new THREE.Vector3(76, 8, -6), new THREE.Vector3(16, 3, 16));
+        this.createPlatform(new THREE.Vector3(112, 14, 6), new THREE.Vector3(16, 3, 16));
+        this.createSpeedRing(new THREE.Vector3(94, 11, 0), 0);
 
         // ==========================================
-        // NIVELL 2: LES AGULLES DE CRISTALL (Pos: 90, 14, 0)
+        // NIVELL 2: LES AGULLES DE CRISTALL (Pos: 185, 20, 0)
+        // Gran Illa: Radi 44, Alçada 20
         // ==========================================
-        // Distance from Island 1: 90 units (34 units of open sky, NO intersection!)
-        this.createFloatingIsland(new THREE.Vector3(90, 14, 0), 28, 14);
+        this.createFloatingIsland(new THREE.Vector3(185, 20, 0), 44, 20);
 
-        // Gate 2 (Blocking exit to Level 3)
+        // Gate 2 (Blocking exit to Moving Platforms)
         this.gate2 = this.createEnergyGate(
-            new THREE.Vector3(116, 17, 0),
-            new THREE.Vector3(1.4, 6.5, 9),
+            new THREE.Vector3(224, 24, 0),
+            new THREE.Vector3(2, 7.5, 12),
             0xa855f7,
             "Barrera Rúnica 2"
         );
 
         // Monolith Guide (Shows the Sequence Order)
-        this.createSequenceGuide(new THREE.Vector3(90, 15.5, 0));
+        this.createSequenceGuide(new THREE.Vector3(185, 21.5, 0));
 
         // 3 Sequence Pillars (Cyan, Purple, Gold)
-        this.createSequencePillar(0, new THREE.Vector3(76, 15.5, -12), 0x00f0ff, "1: Ciano");
-        this.createSequencePillar(1, new THREE.Vector3(88, 15.5, 14), 0xa855f7, "2: Astral");
-        this.createSequencePillar(2, new THREE.Vector3(104, 15.5, -10), 0xffb800, "3: Solar");
+        this.createSequencePillar(0, new THREE.Vector3(155, 21.5, -22), 0x00f0ff, "1: Ciano");
+        this.createSequencePillar(1, new THREE.Vector3(185, 21.5, 26), 0xa855f7, "2: Astral");
+        this.createSequencePillar(2, new THREE.Vector3(215, 21.5, -18), 0xffb800, "3: Solar");
 
-        // 2 Non-Intersecting Moving Platforms between Level 2 and Level 3
-        // Platform M1: Operates at X=130, Y=20, Z=[-8 to 8]
+        // 2 Non-Intersecting Moving Platforms between Level 2 and Level 3 (Large 16x16 hover-barges!)
         this.platM1 = this.createMovingPlatform(
-            new THREE.Vector3(130, 20, -8),
-            new THREE.Vector3(130, 20, 8),
-            new THREE.Vector3(7, 1.5, 7),
-            0.6
-        );
-
-        // Platform M2: Operates at X=150, Y=24, Z=[8 to -8] (completely separated in X and Y!)
-        this.platM2 = this.createMovingPlatform(
-            new THREE.Vector3(150, 24, 8),
-            new THREE.Vector3(150, 24, -8),
-            new THREE.Vector3(7, 1.5, 7),
+            new THREE.Vector3(265, 28, -14),
+            new THREE.Vector3(265, 28, 14),
+            new THREE.Vector3(16, 3, 16),
             0.55
         );
 
+        this.platM2 = this.createMovingPlatform(
+            new THREE.Vector3(315, 34, 14),
+            new THREE.Vector3(315, 34, -14),
+            new THREE.Vector3(16, 3, 16),
+            0.50
+        );
+
         // Speed Ring to assist glide between M1 and M2
-        this.createSpeedRing(new THREE.Vector3(140, 23, 0), 0);
+        this.createSpeedRing(new THREE.Vector3(290, 32, 0), 0);
 
         // ==========================================
-        // NIVELL 3: LA FARGA TEMPORAL (Pos: 190, 28, 0)
+        // NIVELL 3: LA FARGA TEMPORAL (Pos: 400, 40, 0)
+        // Gran Illa: Radi 48, Alçada 22
         // ==========================================
-        // Distance from Island 2: 100 units (NO intersection!)
-        this.createFloatingIsland(new THREE.Vector3(190, 28, 0), 32, 16);
+        this.createFloatingIsland(new THREE.Vector3(400, 40, 0), 48, 22);
 
         // Gate 3 (Encircles the Central Apex Vortex)
         this.gate3 = this.createEnergyGate(
-            new THREE.Vector3(190, 31, 0),
-            new THREE.Vector3(9, 6.5, 1.4),
+            new THREE.Vector3(400, 44, 0),
+            new THREE.Vector3(12, 7.5, 2),
             0x00f0ff,
             "Barrera de l'Àpex"
         );
 
         // 3 Timed Pressure Plates situated around Island 3
-        this.createTimedPlate(0, new THREE.Vector3(170, 29.5, -18));
-        this.createTimedPlate(1, new THREE.Vector3(210, 29.5, -18));
-        this.createTimedPlate(2, new THREE.Vector3(190, 29.5, 20));
+        this.createTimedPlate(0, new THREE.Vector3(365, 41.5, -26));
+        this.createTimedPlate(1, new THREE.Vector3(435, 41.5, -26));
+        this.createTimedPlate(2, new THREE.Vector3(400, 41.5, 30));
 
         // Central Super Vortex (Launches directly to Level 4: Apex Sanctuary)
-        this.apexVortex = this.createJumpPad(new THREE.Vector3(190, 29.5, 0), 48);
+        this.apexVortex = this.createJumpPad(new THREE.Vector3(400, 41.5, 0), 58);
 
         // ==========================================
-        // NIVELL 4: EL SANTUARI DE L'ÀPEX (Pos: 190, 80, 0)
+        // NIVELL 4: EL SANTUARI DE L'ÀPEX (Pos: 400, 115, 0)
         // ==========================================
-        // High above Island 3 in the stratosphere!
+        this.apexPos = new THREE.Vector3(400, 115, 0);
         this.createApexSanctuary(this.apexPos);
 
         // Distributed Collectible Light Orbs
@@ -252,28 +256,69 @@ class World {
         group.position.copy(pos);
 
         // Top cylinder (walking platform)
-        const topGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 3, 20);
+        const topGeo = new THREE.CylinderGeometry(radius, radius * 0.94, 3, 32);
         const topMesh = new THREE.Mesh(topGeo, this.grassMat);
         topMesh.receiveShadow = true;
         topMesh.castShadow = true;
         group.add(topMesh);
 
-        // Solid platform collision registration
-        this.registerPlatform(
-            new THREE.Vector3(pos.x - radius, pos.y - 1.5, pos.z - radius),
-            new THREE.Vector3(pos.x + radius, pos.y + 1.5, pos.z + radius),
-            topMesh
-        );
+        // Solid platform collision registration with CYLINDER support
+        this.platforms.push({
+            isCylinder: true,
+            pos: pos.clone(),
+            radius: radius,
+            min: new THREE.Vector3(pos.x - radius, pos.y - 1.5, pos.z - radius),
+            max: new THREE.Vector3(pos.x + radius, pos.y + 1.5, pos.z + radius),
+            mesh: topMesh,
+            deltaPos: null
+        });
 
         // Rocky bottom cone
-        const underGeo = new THREE.ConeGeometry(radius * 0.92, height, 20);
+        const underGeo = new THREE.ConeGeometry(radius * 0.94, height, 32);
         underGeo.rotateX(Math.PI);
         const underMesh = new THREE.Mesh(underGeo, this.stoneMat);
         underMesh.position.y = -height / 2 - 1.5;
         underMesh.castShadow = true;
         group.add(underMesh);
 
+        // Ancient decorative stone rim
+        const rimGeo = new THREE.TorusGeometry(radius, 0.45, 10, 36);
+        rimGeo.rotateX(Math.PI / 2);
+        const rim = new THREE.Mesh(rimGeo, this.marbleMat);
+        rim.position.y = 1.45;
+        group.add(rim);
+
         this.scene.add(group);
+    }
+
+    createPlatform(pos, size) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // Top grass surface
+        const geo = new THREE.BoxGeometry(size.x, size.y, size.z);
+        const mesh = new THREE.Mesh(geo, this.grassMat);
+        mesh.receiveShadow = true;
+        mesh.castShadow = true;
+        group.add(mesh);
+
+        // Rocky under-base
+        const underGeo = new THREE.BoxGeometry(size.x * 0.94, size.y * 1.8, size.z * 0.94);
+        const under = new THREE.Mesh(underGeo, this.stoneMat);
+        under.position.y = -size.y;
+        under.castShadow = true;
+        group.add(under);
+
+        this.scene.add(group);
+
+        const half = size.clone().multiplyScalar(0.5);
+        this.platforms.push({
+            isCylinder: false,
+            min: new THREE.Vector3(pos.x - half.x, pos.y - half.y, pos.z - half.z),
+            max: new THREE.Vector3(pos.x + half.x, pos.y + half.y, pos.z + half.z),
+            mesh: mesh,
+            deltaPos: null
+        });
     }
 
     createEnergyGate(pos, size, colorHex, name) {
@@ -455,11 +500,7 @@ class World {
 
         this.scene.add(group);
 
-        this.registerPlatform(
-            new THREE.Vector3(pos.x - 2.4, pos.y - 0.2, pos.z - 2.4),
-            new THREE.Vector3(pos.x + 2.4, pos.y + 0.4, pos.z + 2.4),
-            base
-        );
+        // Not registering duplicate platform box: plate sits on solid island cylinder
 
         this.timedPlates.push({
             id: id,
@@ -473,17 +514,21 @@ class World {
         const group = new THREE.Group();
         group.position.copy(pos);
 
-        // Grand floating temple platform
-        const platGeo = new THREE.CylinderGeometry(20, 16, 3, 20);
+        // Grand floating temple platform (Radius 30)
+        const platGeo = new THREE.CylinderGeometry(30, 24, 3.5, 32);
         const plat = new THREE.Mesh(platGeo, this.marbleMat);
         plat.receiveShadow = true;
         group.add(plat);
 
-        this.registerPlatform(
-            new THREE.Vector3(pos.x - 18, pos.y - 1.5, pos.z - 18),
-            new THREE.Vector3(pos.x + 18, pos.y + 1.5, pos.z + 18),
-            plat
-        );
+        this.platforms.push({
+            isCylinder: true,
+            pos: pos.clone(),
+            radius: 30,
+            min: new THREE.Vector3(pos.x - 30, pos.y - 1.75, pos.z - 30),
+            max: new THREE.Vector3(pos.x + 30, pos.y + 1.75, pos.z + 30),
+            mesh: plat,
+            deltaPos: null
+        });
 
         // Celestial Core Sphere
         const coreGeo = new THREE.IcosahedronGeometry(4.2, 2);
@@ -615,27 +660,30 @@ class World {
     createOrbs() {
         const orbPoints = [
             // Level 1
-            new THREE.Vector3(0, 3.5, -4),
-            new THREE.Vector3(8, 3.5, 8),
-            new THREE.Vector3(-8, 3.5, 8),
-            new THREE.Vector3(12, 3.5, -12),
-            // Flight to Level 2
-            new THREE.Vector3(50, 12, 0),
-            new THREE.Vector3(68, 16, 0),
+            new THREE.Vector3(0, 3.5, -12),
+            new THREE.Vector3(14, 3.5, 14),
+            new THREE.Vector3(-14, 3.5, 14),
+            new THREE.Vector3(22, 3.5, -20),
+            // Flight to Level 2 (Stepping Stones & Speed Ring)
+            new THREE.Vector3(60, 10, -3),
+            new THREE.Vector3(76, 12, -6),
+            new THREE.Vector3(94, 14, 0),
+            new THREE.Vector3(112, 17, 6),
             // Level 2
-            new THREE.Vector3(82, 17, -4),
-            new THREE.Vector3(96, 17, 6),
-            new THREE.Vector3(90, 22, -6),
-            // Flight to Level 3
-            new THREE.Vector3(130, 24, 0),
-            new THREE.Vector3(150, 27, 0),
+            new THREE.Vector3(160, 23.5, -12),
+            new THREE.Vector3(185, 23.5, 14),
+            new THREE.Vector3(205, 28, -8),
+            // Flight to Level 3 (Moving Hover-Barges)
+            new THREE.Vector3(265, 31, 0),
+            new THREE.Vector3(290, 34, 0),
+            new THREE.Vector3(315, 37, 0),
             // Level 3
-            new THREE.Vector3(180, 31, -8),
-            new THREE.Vector3(200, 31, 8),
-            new THREE.Vector3(190, 36, 0),
+            new THREE.Vector3(380, 43.5, -16),
+            new THREE.Vector3(420, 43.5, 16),
+            new THREE.Vector3(400, 49, 0),
             // Level 4 Summit
-            new THREE.Vector3(184, 82, 6),
-            new THREE.Vector3(196, 82, -6)
+            new THREE.Vector3(392, 118, 8),
+            new THREE.Vector3(408, 118, -8)
         ];
 
         const orbGeo = new THREE.OctahedronGeometry(0.65, 0);
