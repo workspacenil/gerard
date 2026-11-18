@@ -273,18 +273,21 @@ class Player {
         this.meshContainer = new THREE.Group();
         this.root.add(this.meshContainer);
 
-        // Character assembly group centered on Albert
+        // Character assembly group centered on the goat
         this.characterGroup = new THREE.Group();
         this.meshContainer.add(this.characterGroup);
 
-        // 1. BUILD ALBERT (El Protagonista - A peu sobre dues cames, sense cabra!)
+        // 1. BUILD THE GOAT (La Cabra)
+        this.buildGoat();
+
+        // 2. BUILD THE RIDER (El Genet amb dessuadora vermella i senyera)
         this.buildRider();
 
-        // 2. BUILD THE SPREADING GLIDER WINGS (Ales dinàmiques a la motxilla)
+        // 3. BUILD THE SPREADING GLIDER WINGS (Ales dinàmiques)
         this.buildGliderWings();
 
-        // 3. BUILD THE THRUSTERS & FLAME EFFECTS
-        this.initThrusterFireEffects();
+        // 4. LOAD HIGH QUALITY CUSTOM 3D GLB MODEL
+        this.loadCustomGLB('models/skyebrowse-3d-model.glb');
 
         // Add to Three.js scene
         this.root.position.copy(this.position);
@@ -565,92 +568,79 @@ class Player {
         return { root, upper: upperMesh, lower: lowerGroup, isFront };
     }
 
-    // --- 2. THE RIDER MESH (ALBERT - HEROI A PEU) ---
+    // --- 2. THE RIDER MESH ---
     buildRider() {
         this.riderGroup = new THREE.Group();
-        this.riderGroup.position.set(0, 0, 0); // Grounded on foot!
+        this.riderGroup.position.set(0, 0.95, -0.05); // Astride the goat
         this.characterGroup.add(this.riderGroup);
 
-        // Albert Torso in Red Hoodie (Robust, chubby "gras / grassonet" platformer proportions)
-        const torsoGeo = new THREE.CylinderGeometry(0.38, 0.34, 0.68, 14);
-        torsoGeo.scale(1.35, 1, 1.15);
+        // Rider Torso in Red Hoodie
+        const torsoGeo = new THREE.CylinderGeometry(0.32, 0.28, 0.65, 14);
+        torsoGeo.scale(1.15, 1, 0.85);
         this.riderTorso = new THREE.Mesh(torsoGeo, this.matHoodie);
-        this.riderTorso.position.set(0, 1.05, 0);
+        this.riderTorso.position.set(0, 0.32, 0);
+        this.riderTorso.rotation.x = 0.22; // Leaning forward eagerly
         this.riderTorso.castShadow = true;
         this.riderGroup.add(this.riderTorso);
 
-        // Cute chubby hoodie belly
-        const bellyGeo = new THREE.SphereGeometry(0.34, 16, 12);
-        bellyGeo.scale(1.2, 0.95, 0.95);
-        const belly = new THREE.Mesh(bellyGeo, this.matHoodie);
-        belly.position.set(0, -0.06, 0.16);
-        belly.castShadow = true;
-        this.riderTorso.add(belly);
-
-        // Kangaroo front pocket
-        const pocketGeo = new THREE.BoxGeometry(0.44, 0.20, 0.12);
-        const pocket = new THREE.Mesh(pocketGeo, this.matHoodie);
-        pocket.position.set(0, -0.15, 0.24);
-        this.riderTorso.add(pocket);
-
         // Hoodie collar / hood bunched behind neck
-        const hoodCollarGeo = new THREE.TorusGeometry(0.28, 0.12, 10, 16);
+        const hoodCollarGeo = new THREE.TorusGeometry(0.25, 0.1, 10, 16);
         hoodCollarGeo.rotateX(Math.PI / 2.3);
         const hoodCollar = new THREE.Mesh(hoodCollarGeo, this.matHoodie);
-        hoodCollar.position.set(0, 0.34, -0.08);
+        hoodCollar.position.set(0, 0.3, -0.06);
         this.riderTorso.add(hoodCollar);
 
         // Dangling white hoodie drawstrings
-        const stringGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.24, 6);
-        stringGeo.translate(0, -0.12, 0);
-        this.drawstringLeft = new THREE.Mesh(stringGeo, this.matShoeSole);
-        this.drawstringLeft.position.set(-0.10, 0.26, 0.26);
-        this.drawstringRight = this.drawstringLeft.clone();
-        this.drawstringRight.position.x = 0.10;
-        this.riderTorso.add(this.drawstringLeft);
-        this.riderTorso.add(this.drawstringRight);
+        const stringGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.22, 6);
+        stringGeo.translate(0, -0.11, 0);
+        const leftString = new THREE.Mesh(stringGeo, this.matShoeSole);
+        leftString.position.set(-0.09, 0.25, 0.24);
+        const rightString = leftString.clone();
+        rightString.position.x = 0.09;
+        this.riderTorso.add(leftString);
+        this.riderTorso.add(rightString);
 
         // BACKPACK WITH CATALAN FLAG (SENYERA)
         this.backpackGroup = new THREE.Group();
-        this.backpackGroup.position.set(0, 0.04, -0.26);
+        this.backpackGroup.position.set(0, 0.02, -0.22);
 
-        const packGeo = new THREE.BoxGeometry(0.50, 0.52, 0.24);
+        const packGeo = new THREE.BoxGeometry(0.42, 0.46, 0.22);
         const packMesh = new THREE.Mesh(packGeo, this.matBackpack);
         packMesh.castShadow = true;
         this.backpackGroup.add(packMesh);
 
         // Backpack front pouch
-        const pouchGeo = new THREE.BoxGeometry(0.38, 0.28, 0.10);
+        const pouchGeo = new THREE.BoxGeometry(0.34, 0.26, 0.08);
         const pouchMesh = new THREE.Mesh(pouchGeo, this.matBackpack);
-        pouchMesh.position.set(0, -0.08, -0.15);
+        pouchMesh.position.set(0, -0.06, -0.13);
         this.backpackGroup.add(pouchMesh);
 
         // Senyera Patch mounted cleanly on the back
-        const flagPlaneGeo = new THREE.PlaneGeometry(0.30, 0.20);
+        const flagPlaneGeo = new THREE.PlaneGeometry(0.24, 0.16);
         flagPlaneGeo.rotateY(Math.PI); // Facing backward
         const flagMesh = new THREE.Mesh(flagPlaneGeo, this.matSenyera);
-        flagMesh.position.set(0, 0.04, -0.21);
+        flagMesh.position.set(0, 0.04, -0.175);
         this.backpackGroup.add(flagMesh);
 
         this.riderTorso.add(this.backpackGroup);
 
         // RIDER HEAD & EXPRESSIVE FACE
         this.riderHeadGroup = new THREE.Group();
-        this.riderHeadGroup.position.set(0, 0.44, 0.08);
+        this.riderHeadGroup.position.set(0, 0.42, 0.08);
 
         // Head Base
-        const headGeo = new THREE.SphereGeometry(0.30, 18, 16);
-        headGeo.scale(0.95, 1, 0.95);
+        const headGeo = new THREE.SphereGeometry(0.28, 18, 16);
+        headGeo.scale(0.92, 1, 0.95);
         const headMesh = new THREE.Mesh(headGeo, this.matSkin);
         headMesh.castShadow = true;
         this.riderHeadGroup.add(headMesh);
 
         // Chunky Beard & Mustache
-        const beardGeo = new THREE.CylinderGeometry(0.30, 0.22, 0.34, 12);
+        const beardGeo = new THREE.CylinderGeometry(0.28, 0.22, 0.32, 12);
         beardGeo.scale(1, 0.9, 1.05);
-        this.riderBeard = new THREE.Mesh(beardGeo, this.matHairBeard);
-        this.riderBeard.position.set(0, -0.14, 0.12);
-        this.riderHeadGroup.add(this.riderBeard);
+        const beardMesh = new THREE.Mesh(beardGeo, this.matHairBeard);
+        beardMesh.position.set(0, -0.12, 0.06);
+        this.riderHeadGroup.add(beardMesh);
 
         const mustacheGeo = new THREE.SphereGeometry(0.12, 10, 8);
         mustacheGeo.scale(2.2, 0.7, 0.9);
@@ -658,18 +648,19 @@ class Player {
         mustache.position.set(0, -0.02, 0.26);
         this.riderHeadGroup.add(mustache);
 
-        // Expressive Open Mouth
+        // Expressive Open Mouth ("WOOO!")
         const riderMouthGeo = new THREE.SphereGeometry(0.09, 10, 8);
         riderMouthGeo.scale(1.1, 0.6, 0.7);
         const riderMouth = new THREE.Mesh(riderMouthGeo, this.matMouthInside);
         riderMouth.position.set(0, -0.07, 0.26);
         this.riderHeadGroup.add(riderMouth);
 
-        // Big Cartoon Eyes
+        // Rider Big Expressive Eyes
         const riderEyeGeo = new THREE.SphereGeometry(0.085, 12, 10);
         const riderPupilGeo = new THREE.SphereGeometry(0.042, 10, 8);
         riderPupilGeo.scale(1, 1, 0.4);
 
+        // Left Eye
         const rLeftEye = new THREE.Mesh(riderEyeGeo, this.matEyeWhite);
         rLeftEye.position.set(-0.11, 0.06, 0.24);
         const rLeftPupil = new THREE.Mesh(riderPupilGeo, this.matPupil);
@@ -677,6 +668,7 @@ class Player {
         rLeftEye.add(rLeftPupil);
         this.riderHeadGroup.add(rLeftEye);
 
+        // Right Eye
         const rRightEye = new THREE.Mesh(riderEyeGeo, this.matEyeWhite);
         rRightEye.position.set(0.11, 0.06, 0.24);
         const rRightPupil = new THREE.Mesh(riderPupilGeo, this.matPupil);
@@ -685,26 +677,27 @@ class Player {
         this.riderHeadGroup.add(rRightEye);
 
         // Eyebrows
-        const browGeo = new THREE.BoxGeometry(0.11, 0.035, 0.04);
+        const browGeo = new THREE.BoxGeometry(0.1, 0.035, 0.04);
         const leftBrow = new THREE.Mesh(browGeo, this.matHairBeard);
         leftBrow.position.set(-0.11, 0.16, 0.26);
-        leftBrow.rotation.z = 0.2;
+        leftBrow.rotation.z = 0.25;
         this.riderHeadGroup.add(leftBrow);
 
         const rightBrow = new THREE.Mesh(browGeo, this.matHairBeard);
         rightBrow.position.set(0.11, 0.16, 0.26);
-        rightBrow.rotation.z = -0.2;
+        rightBrow.rotation.z = -0.25;
         this.riderHeadGroup.add(rightBrow);
 
-        // Tousled Adventurer Hair
+        // Messy Layered Spiky Hair (matching the turnaround)
         this.riderHairGroup = new THREE.Group();
         this.riderHairGroup.position.set(0, 0.15, -0.04);
 
-        const hairCapGeo = new THREE.SphereGeometry(0.32, 16, 12);
+        const hairCapGeo = new THREE.SphereGeometry(0.3, 16, 12);
         hairCapGeo.scale(0.95, 0.9, 1);
         const hairCap = new THREE.Mesh(hairCapGeo, this.matHairBeard);
         this.riderHairGroup.add(hairCap);
 
+        // Hair tufts / spikes on top and sides
         const tuftGeo = new THREE.ConeGeometry(0.09, 0.22, 6);
         const tuftOffsets = [
             [-0.14, 0.25, 0.08, 0.3, -0.4],
@@ -712,7 +705,9 @@ class Player {
             [0.14, 0.25, 0.08, 0.3, 0.4],
             [-0.2, 0.12, -0.1, 0, -0.8],
             [0.2, 0.12, -0.1, 0, 0.8],
-            [0, 0.22, -0.22, -0.6, 0]
+            [0, 0.22, -0.22, -0.6, 0],
+            [-0.12, 0.26, -0.12, -0.4, -0.3],
+            [0.12, 0.26, -0.12, -0.4, 0.3]
         ];
 
         tuftOffsets.forEach(([tx, ty, tz, rx, rz]) => {
@@ -726,13 +721,13 @@ class Player {
         this.riderHeadGroup.add(this.riderHairGroup);
         this.riderTorso.add(this.riderHeadGroup);
 
-        // RIDER ARMS & HANDS (Articulated with shoulders, elbows and hands)
+        // RIDER ARMS & HANDS (Clutching the goat horns)
         this.riderLeftArm = this.createRiderArm(-1);
         this.riderRightArm = this.createRiderArm(1);
         this.riderTorso.add(this.riderLeftArm.root);
         this.riderTorso.add(this.riderRightArm.root);
 
-        // RIDER LEGS & SNEAKERS (Articulated with hips, knees and shoes for walking!)
+        // RIDER LEGS & SNEAKERS (Straddling goat flanks in blue jeans)
         this.riderLeftLeg = this.createRiderLeg(-1);
         this.riderRightLeg = this.createRiderLeg(1);
         this.riderGroup.add(this.riderLeftLeg.root);
@@ -741,75 +736,75 @@ class Player {
 
     createRiderArm(side) {
         const root = new THREE.Group();
-        root.position.set(side * 0.38, 0.22, 0);
+        root.position.set(side * 0.34, 0.18, 0.05);
 
         // Upper Arm (Red sleeve)
-        const upperArmGeo = new THREE.CylinderGeometry(0.12, 0.10, 0.38, 10);
-        upperArmGeo.translate(0, -0.18, 0);
+        const upperArmGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.36, 10);
+        upperArmGeo.translate(0, -0.16, 0);
         const upperArmMesh = new THREE.Mesh(upperArmGeo, this.matHoodie);
         upperArmMesh.castShadow = true;
         root.add(upperArmMesh);
 
-        // Forearm
+        // Forearm extending forward towards the goat horns
         const foreArmGroup = new THREE.Group();
-        foreArmGroup.position.set(0, -0.34, 0);
+        foreArmGroup.position.set(0, -0.3, 0);
 
-        const foreArmGeo = new THREE.CylinderGeometry(0.10, 0.09, 0.34, 10);
-        foreArmGeo.translate(0, -0.16, 0);
+        const foreArmGeo = new THREE.CylinderGeometry(0.075, 0.07, 0.34, 10);
+        foreArmGeo.translate(0, -0.15, 0);
         const foreArmMesh = new THREE.Mesh(foreArmGeo, this.matHoodie);
         foreArmMesh.castShadow = true;
         foreArmGroup.add(foreArmMesh);
 
-        // Hand
-        const handGeo = new THREE.SphereGeometry(0.10, 10, 8);
+        // Hand clutching horn
+        const handGeo = new THREE.SphereGeometry(0.08, 10, 8);
         handGeo.scale(1, 0.9, 1.2);
         const handMesh = new THREE.Mesh(handGeo, this.matSkin);
-        handMesh.position.set(0, -0.34, 0.04);
+        handMesh.position.set(0, -0.32, 0.04);
         foreArmGroup.add(handMesh);
 
         root.add(foreArmGroup);
 
-        // Default relaxed standing pose
-        root.rotation.x = 0.05;
-        root.rotation.z = side * -0.15;
-        foreArmGroup.rotation.x = -0.25;
+        // Initial pose holding horns
+        root.rotation.x = 0.85;
+        root.rotation.z = side * -0.28;
+        foreArmGroup.rotation.x = -0.45;
 
-        return { root, upper: upperArmMesh, foreArm: foreArmGroup, hand: handMesh, side };
+        return { root, upper: upperArmMesh, foreArm: foreArmGroup, side };
     }
 
     createRiderLeg(side) {
         const root = new THREE.Group();
-        root.position.set(side * 0.22, 0.72, 0); // Hips at Y = 0.72
+        root.position.set(side * 0.28, 0.2, -0.05);
 
         // Thigh in Blue Jeans
-        const thighGeo = new THREE.CylinderGeometry(0.17, 0.14, 0.38, 12);
-        thighGeo.translate(0, -0.19, 0);
+        const thighGeo = new THREE.CylinderGeometry(0.14, 0.12, 0.38, 10);
+        thighGeo.translate(0, -0.18, 0);
         const thighMesh = new THREE.Mesh(thighGeo, this.matDenim);
         thighMesh.castShadow = true;
         root.add(thighMesh);
 
         // Shin / Lower Leg
         const shinGroup = new THREE.Group();
-        shinGroup.position.set(0, -0.38, 0);
+        shinGroup.position.set(0, -0.34, 0);
 
-        const shinGeo = new THREE.CylinderGeometry(0.14, 0.12, 0.36, 12);
-        shinGeo.translate(0, -0.18, 0);
+        const shinGeo = new THREE.CylinderGeometry(0.11, 0.1, 0.34, 10);
+        shinGeo.translate(0, -0.16, 0);
         const shinMesh = new THREE.Mesh(shinGeo, this.matDenim);
         shinMesh.castShadow = true;
         shinGroup.add(shinMesh);
 
         // Sneaker (Brown skater shoe with thick white rubber sole)
         const shoeGroup = new THREE.Group();
-        shoeGroup.position.set(0, -0.34, 0.06);
+        shoeGroup.position.set(0, -0.32, 0.08);
 
-        const shoeUpperGeo = new THREE.BoxGeometry(0.24, 0.16, 0.38);
+        const shoeUpperGeo = new THREE.BoxGeometry(0.18, 0.14, 0.32);
         shoeUpperGeo.translate(0, 0.04, 0.04);
         const shoeUpper = new THREE.Mesh(shoeUpperGeo, this.matShoe);
         shoeUpper.castShadow = true;
         shoeGroup.add(shoeUpper);
 
-        const soleGeo = new THREE.BoxGeometry(0.26, 0.08, 0.40);
-        soleGeo.translate(0, -0.06, 0.04);
+        const soleGeo = new THREE.BoxGeometry(0.2, 0.06, 0.34);
+        soleGeo.translate(0, -0.05, 0.04);
         const sole = new THREE.Mesh(soleGeo, this.matShoeSole);
         sole.castShadow = true;
         shoeGroup.add(sole);
@@ -817,9 +812,10 @@ class Player {
         shinGroup.add(shoeGroup);
         root.add(shinGroup);
 
-        // Upright standing stance
-        root.rotation.set(0, 0, 0);
-        shinGroup.rotation.set(0, 0, 0);
+        // Riding astride stance
+        root.rotation.z = side * -0.65;
+        root.rotation.x = 0.65;
+        shinGroup.rotation.x = -1.15;
 
         return { root, thigh: thighMesh, shin: shinGroup, shoe: shoeGroup, side };
     }
@@ -827,8 +823,8 @@ class Player {
     // --- 3. MAJESTIC GLIDER WINGS ---
     buildGliderWings() {
         this.wingsContainer = new THREE.Group();
-        this.wingsContainer.position.set(0, 0.18, -0.12);
-        this.backpackGroup.add(this.wingsContainer);
+        this.wingsContainer.position.set(0, 0.95, -0.08);
+        this.characterGroup.add(this.wingsContainer);
 
         // Left & Right Wings
         this.leftWingGroup = this.createFeatheredWing(-1);
@@ -888,21 +884,21 @@ class Player {
     }
 
     // ==========================================
-    // BACKPACK FIRE ROCKET THRUSTER & FLAME JETS
+    // UNDERBELLY FIRE ROCKET THRUSTER & FLAME JETS
     // ==========================================
     initThrusterFireEffects() {
         this.thrusterGroup = new THREE.Group();
-        this.thrusterGroup.position.set(0, -0.25, -0.12);
-        this.backpackGroup.add(this.thrusterGroup);
+        this.thrusterGroup.position.set(0, 0.42, -0.1);
+        this.goatGroup.add(this.thrusterGroup);
 
-        // Twin metallic exhaust nozzles mounted under backpack
+        // Twin metallic exhaust nozzles mounted under the belly
         const nozzleGeo = new THREE.CylinderGeometry(0.08, 0.13, 0.22, 12);
         nozzleGeo.rotateX(Math.PI / 8);
 
         this.leftNozzle = new THREE.Mesh(nozzleGeo, this.matThrusterNozzle);
-        this.leftNozzle.position.set(-0.16, 0, 0);
+        this.leftNozzle.position.set(-0.18, 0, 0);
         this.rightNozzle = new THREE.Mesh(nozzleGeo, this.matThrusterNozzle);
-        this.rightNozzle.position.set(0.16, 0, 0);
+        this.rightNozzle.position.set(0.18, 0, 0);
 
         this.thrusterGroup.add(this.leftNozzle);
         this.thrusterGroup.add(this.rightNozzle);
@@ -1308,145 +1304,131 @@ class Player {
             this.wingsContainer.visible = false;
         }
 
-        // --- 3. ALBERT ACCESSORIES & BEARD DYNAMICS ---
-        // Hoodie drawstrings swing gently with velocity
-        const stringSwing = Math.sin(this.animTime * 10) * 0.15 + (speed * 0.03);
-        if (this.drawstringLeft && this.drawstringRight) {
-            this.drawstringLeft.rotation.x = stringSwing;
-            this.drawstringRight.rotation.x = -stringSwing * 0.8;
-        }
+        // --- 3. GOAT TAIL, EARS, TONGUE & BEARD PHYSICS ---
+        // Tail wags with high energy
+        const tailWag = Math.sin(this.animTime * 14) * 0.35;
+        this.goatTailGroup.rotation.y = tailWag;
+        this.goatTailGroup.rotation.x = -0.4 + Math.sin(this.animTime * 7) * 0.15;
 
-        // Beard slight movement
-        if (this.riderBeard) {
-            this.riderBeard.rotation.x = Math.sin(this.animTime * 6) * 0.08 - (this.velocity.y * 0.015);
-        }
+        // Floppy Ears bounce up and down with movement inertia
+        const earBounce = Math.sin(this.animTime * 9) * 0.22 - (speed * 0.015);
+        this.goatLeftEar.rotation.z = Math.PI / 2.6 + earBounce;
+        this.goatRightEar.rotation.z = -Math.PI / 2.6 - earBounce;
 
-        // --- 4. ALBERT GAIT & BODY POSING (HEROI A PEU) ---
+        // Pink Tongue flaps excitedly in the wind!
+        const tongueFlap = Math.sin(this.animTime * 18) * 0.3 + (speed * 0.03);
+        this.goatTongueGroup.rotation.z = 0.2 + tongueFlap;
+        this.goatTongueGroup.rotation.y = Math.cos(this.animTime * 12) * 0.2;
 
-        // A) GLIDING STATE (Vol lliure amb ales)
+        // Chin Goatee beard swings with velocity
+        this.goatBeard.rotation.x = Math.sin(this.animTime * 8) * 0.25 - (this.velocity.y * 0.02);
+
+        // --- 4. GAIT & BODY POSING BY STATE ---
+
+        // A) GLIDING STATE (Streamlined flight pose)
         if (this.isGliding) {
-            this.characterGroup.rotation.x = THREE.MathUtils.lerp(this.characterGroup.rotation.x, 0.38, 10 * dt);
-            this.characterGroup.rotation.z = THREE.MathUtils.lerp(this.characterGroup.rotation.z, -this.velocity.x * 0.02, 8 * dt);
+            // Forward flight lean & banking into turns
+            this.characterGroup.rotation.x = THREE.MathUtils.lerp(this.characterGroup.rotation.x, 0.45, 10 * dt);
+            this.characterGroup.rotation.z = THREE.MathUtils.lerp(this.characterGroup.rotation.z, -this.velocity.x * 0.025, 8 * dt);
 
-            // Legs trailing backwards aerodynamically
-            this.riderLeftLeg.root.rotation.x = 0.55;
-            this.riderRightLeg.root.rotation.x = 0.55;
-            this.riderLeftLeg.shin.rotation.x = 0.3;
-            this.riderRightLeg.shin.rotation.x = 0.3;
+            // Legs streamlined backward
+            this.frontLeftLeg.root.rotation.x = -0.6;
+            this.frontRightLeg.root.rotation.x = -0.6;
+            this.rearLeftLeg.root.rotation.x = 0.5;
+            this.rearRightLeg.root.rotation.x = 0.5;
 
-            // Arms holding backpack straps
-            this.riderLeftArm.root.rotation.x = -0.5;
-            this.riderRightArm.root.rotation.x = -0.5;
-            this.riderLeftArm.foreArm.rotation.x = -0.4;
-            this.riderRightArm.foreArm.rotation.x = -0.4;
-
-            this.riderTorso.position.y = 1.05;
-            this.riderTorso.rotation.x = 0.25;
+            // Rider hugs goat neck aerodynamic
+            this.riderTorso.rotation.x = 0.55;
+            this.goatHeadGroup.rotation.x = -0.25;
             return;
         }
 
-        // B) FIRE DASH / BOOST STATE (Projectil amb coets a la motxilla)
+        // B) FIRE DASH / BOOST STATE (Explosive rocket projectile pose)
         if (this.isDashing) {
-            this.characterGroup.rotation.x = 0.72; // Lean forward into supersonic boost
+            this.characterGroup.rotation.x = 0.7; // Tilted forward like a rocket
             this.characterGroup.rotation.z = 0;
 
-            // Legs streamlined back
-            this.riderLeftLeg.root.rotation.x = 0.75;
-            this.riderRightLeg.root.rotation.x = 0.75;
-            this.riderLeftLeg.shin.rotation.x = 0.2;
-            this.riderRightLeg.shin.rotation.x = 0.2;
+            this.frontLeftLeg.root.rotation.x = -0.8;
+            this.frontRightLeg.root.rotation.x = -0.8;
+            this.rearLeftLeg.root.rotation.x = 0.7;
+            this.rearRightLeg.root.rotation.x = 0.7;
 
-            // Arms back like superhero dive
-            this.riderLeftArm.root.rotation.x = 0.7;
-            this.riderRightArm.root.rotation.x = 0.7;
-
-            this.riderTorso.position.y = 1.05;
-            this.riderTorso.rotation.x = 0.3;
+            this.riderTorso.rotation.x = 0.75;
+            this.goatHeadGroup.rotation.x = -0.4;
             return;
         }
 
         // C) AIRBORNE / JUMPING STATE
         if (!this.isGrounded) {
             if (this.isGroundPounding) {
-                // Vertical meteor slam
+                // Vertical meteor dive
                 this.characterGroup.rotation.x = 1.57;
                 this.characterGroup.rotation.z = 0;
             } else {
                 // Rising / Falling arc
-                const airLean = this.velocity.y > 0 ? -0.15 : 0.25;
+                const airLean = this.velocity.y > 0 ? -0.2 : 0.3;
                 this.characterGroup.rotation.x = THREE.MathUtils.lerp(this.characterGroup.rotation.x, airLean, 10 * dt);
                 this.characterGroup.rotation.z = THREE.MathUtils.lerp(this.characterGroup.rotation.z, 0, 10 * dt);
 
-                // Mid-air leg tuck on ascent, reach down on descent
-                if (this.velocity.y > 0) {
-                    this.riderLeftLeg.root.rotation.x = -0.45;
-                    this.riderRightLeg.root.rotation.x = -0.3;
-                    this.riderLeftLeg.shin.rotation.x = 0.6;
-                    this.riderRightLeg.shin.rotation.x = 0.5;
-                    this.riderLeftArm.root.rotation.x = -0.7;
-                    this.riderRightArm.root.rotation.x = -0.7;
-                } else {
-                    this.riderLeftLeg.root.rotation.x = 0.15;
-                    this.riderRightLeg.root.rotation.x = 0.15;
-                    this.riderLeftLeg.shin.rotation.x = 0.1;
-                    this.riderRightLeg.shin.rotation.x = 0.1;
-                    this.riderLeftArm.root.rotation.x = 0.1;
-                    this.riderRightArm.root.rotation.x = 0.1;
-                }
+                // Legs tucking mid-air (just like in the turnaround!)
+                const legTuck = this.velocity.y > 0 ? 0.4 : -0.3;
+                this.frontLeftLeg.root.rotation.x = THREE.MathUtils.lerp(this.frontLeftLeg.root.rotation.x, legTuck, 12 * dt);
+                this.frontRightLeg.root.rotation.x = THREE.MathUtils.lerp(this.frontRightLeg.root.rotation.x, legTuck + 0.1, 12 * dt);
+                this.rearLeftLeg.root.rotation.x = THREE.MathUtils.lerp(this.rearLeftLeg.root.rotation.x, -legTuck, 12 * dt);
+                this.rearRightLeg.root.rotation.x = THREE.MathUtils.lerp(this.rearRightLeg.root.rotation.x, -legTuck - 0.1, 12 * dt);
             }
             return;
         }
 
-        // D) GROUND LOCOMOTION & IDLE
+        // D) GROUND RUNNING / GALLOPING STATE
+        // Reset X/Z character tilt
         this.characterGroup.rotation.x = THREE.MathUtils.lerp(this.characterGroup.rotation.x, 0, 12 * dt);
         this.characterGroup.rotation.z = THREE.MathUtils.lerp(this.characterGroup.rotation.z, 0, 12 * dt);
 
-        if (isMoving && speed > 0.35) {
-            // WALKING & RUNNING ANIMATION: LEGS AND ARMS IN NATURAL SYNC!
-            const walkCadence = this.isSprinting ? 18 : 13;
-            const phase = this.animTime * walkCadence;
-            const strideAmp = this.isSprinting ? 0.95 : 0.72;
+        if (isMoving && speed > 0.4) {
+            // Dynamic 4-beat bounding gallop cycle
+            const gallopRate = this.isSprinting ? 22 : 14;
+            const phase = this.animTime * gallopRate;
+            const strideAmp = this.isSprinting ? 0.85 : 0.55;
 
-            // Hip swing forward/backward (Left and Right alternating)
-            const legCycle = Math.sin(phase);
-            this.riderLeftLeg.root.rotation.x = legCycle * strideAmp;
-            this.riderRightLeg.root.rotation.x = -legCycle * strideAmp;
+            // Front legs swing alternately
+            this.frontLeftLeg.root.rotation.x = Math.sin(phase) * strideAmp;
+            this.frontRightLeg.root.rotation.x = Math.sin(phase + Math.PI) * strideAmp;
+            this.frontLeftLeg.lower.rotation.x = Math.max(0, -Math.sin(phase)) * 0.8;
+            this.frontRightLeg.lower.rotation.x = Math.max(0, -Math.sin(phase + Math.PI)) * 0.8;
 
-            // Knee flexion: dynamic bend during step cycle
-            this.riderLeftLeg.shin.rotation.x = Math.max(0, -legCycle) * 1.15;
-            this.riderRightLeg.shin.rotation.x = Math.max(0, legCycle) * 1.15;
+            // Rear legs swing with phase offset
+            this.rearLeftLeg.root.rotation.x = Math.sin(phase + 1.2) * strideAmp;
+            this.rearRightLeg.root.rotation.x = Math.sin(phase + Math.PI + 1.2) * strideAmp;
+            this.rearLeftLeg.lower.rotation.x = Math.max(0, -Math.sin(phase + 1.2)) * 0.7;
+            this.rearRightLeg.lower.rotation.x = Math.max(0, -Math.sin(phase + Math.PI + 1.2)) * 0.7;
 
-            // Arm swings in opposition to legs (Natural biped gait!)
-            const armAmp = strideAmp * 0.9;
-            this.riderLeftArm.root.rotation.x = -legCycle * armAmp;
-            this.riderRightArm.root.rotation.x = legCycle * armAmp;
-            this.riderLeftArm.foreArm.rotation.x = -0.3 + Math.max(0, legCycle) * 0.45;
-            this.riderRightArm.foreArm.rotation.x = -0.3 + Math.max(0, -legCycle) * 0.45;
+            // Goat body bouncing & pitching in gallop rhythm
+            this.goatGroup.position.y = Math.abs(Math.sin(phase)) * (this.isSprinting ? 0.12 : 0.07);
+            this.goatGroup.rotation.x = Math.sin(phase) * 0.08;
 
-            // Torso energetic vertical bounce and slight hip roll
-            this.riderTorso.position.y = 1.05 + Math.abs(Math.sin(phase)) * (this.isSprinting ? 0.11 : 0.07);
-            this.riderTorso.rotation.y = legCycle * 0.12;
-            this.riderTorso.rotation.z = Math.cos(phase) * 0.05;
-            this.riderTorso.rotation.x = 0.14 + (this.isSprinting ? 0.1 : 0); // Slight running lean
-            this.riderHeadGroup.rotation.x = -Math.sin(phase * 2) * 0.04;
+            // Rider bouncing enthusiastically on the saddle
+            this.riderGroup.position.y = 0.95 + Math.abs(Math.sin(phase * 1.5)) * 0.06;
+            this.riderTorso.rotation.x = 0.25 + Math.sin(phase) * 0.06;
+            this.riderHeadGroup.rotation.x = -Math.sin(phase) * 0.08;
         } else {
-            // IDLE: Relaxed breathing stance, zero leg rotation
-            const breathe = Math.sin(this.animTime * 2.8) * 0.02;
-            this.riderTorso.position.y = 1.05 + breathe;
-            this.riderTorso.rotation.set(0.04, 0, 0);
-            this.riderHeadGroup.rotation.x = breathe * 0.4;
+            // Idle breathing & gentle tongue sway
+            const breathe = Math.sin(this.animTime * 3.0) * 0.02;
+            this.goatGroup.position.y = breathe;
+            this.riderGroup.position.y = 0.95 + breathe * 0.5;
 
-            // Reset legs to straight standing position
-            this.riderLeftLeg.root.rotation.set(0, 0, 0);
-            this.riderRightLeg.root.rotation.set(0, 0, 0);
-            this.riderLeftLeg.shin.rotation.set(0, 0, 0);
-            this.riderRightLeg.shin.rotation.set(0, 0, 0);
+            // Reset leg angles
+            this.frontLeftLeg.root.rotation.x = 0;
+            this.frontRightLeg.root.rotation.x = 0;
+            this.rearLeftLeg.root.rotation.x = 0;
+            this.rearRightLeg.root.rotation.x = 0;
+            this.frontLeftLeg.lower.rotation.x = 0;
+            this.frontRightLeg.lower.rotation.x = 0;
+            this.rearLeftLeg.lower.rotation.x = 0;
+            this.rearRightLeg.lower.rotation.x = 0;
 
-            // Relaxed arms hanging naturally
-            this.riderLeftArm.root.rotation.set(0.05 + breathe * 0.3, 0, 0.08);
-            this.riderRightArm.root.rotation.set(0.05 + breathe * 0.3, 0, -0.08);
-            this.riderLeftArm.foreArm.rotation.set(-0.2, 0, 0);
-            this.riderRightArm.foreArm.rotation.set(-0.2, 0, 0);
+            this.goatGroup.rotation.x = 0;
+            this.riderTorso.rotation.x = 0.22;
         }
     }
 
@@ -1490,6 +1472,7 @@ class Player {
                             this.isGroundPounding = false;
                             if (window.audioManager) {
                                 window.audioManager.playGroundPound();
+                                window.audioManager.playGoatBleat();
                             }
                             world.spawnGroundPoundShockwave(this.position);
                         }
@@ -1518,7 +1501,6 @@ class Player {
                 continue;
             }
 
-            // BOX PLATFORM COLLISION (Barges, Stepping Stones & Barriers)
             const min = plat.min;
             const max = plat.max;
 
@@ -1565,6 +1547,7 @@ class Player {
                         this.isGroundPounding = false;
                         if (window.audioManager) {
                             window.audioManager.playGroundPound();
+                            window.audioManager.playGoatBleat();
                         }
                         world.spawnGroundPoundShockwave(this.position);
                     }
