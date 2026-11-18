@@ -560,10 +560,18 @@ class Game {
             orbValue.textContent = `${this.orbsCollected} / ${this.totalOrbs}`;
         }
 
-        // 2. Beacons Counter
-        const beaconValue = document.getElementById('stat-beacons');
-        if (beaconValue) {
-            beaconValue.textContent = `${this.beaconsCount} / ${this.totalBeacons}`;
+        // 2. Level Progress
+        const levelValue = document.getElementById('stat-level');
+        if (levelValue) {
+            levelValue.textContent = `${this.world.currentLevel} / ${this.world.maxLevel}`;
+        }
+
+        for (let l = 1; l <= 4; l++) {
+            const dot = document.getElementById(`level-dot-${l}`);
+            if (dot) {
+                if (l <= this.world.currentLevel) dot.classList.add('active');
+                else dot.classList.remove('active');
+            }
         }
 
         // 3. Dash Cooldown Bar
@@ -597,7 +605,7 @@ class Game {
         const speedNum = document.getElementById('speed-val');
         if (speedNum) {
             const hSpeed = Math.sqrt(this.player.velocity.x * this.player.velocity.x + this.player.velocity.z * this.player.velocity.z);
-            speedNum.textContent = Math.round(hSpeed * 3.6); // km/h equivalent
+            speedNum.textContent = Math.round(hSpeed * 3.6);
         }
 
         // 7. Radar Canvas Drawing
@@ -612,72 +620,74 @@ class Game {
         const cx = width / 2;
         const cy = height / 2;
         const radius = width / 2 - 4;
-        const radarRange = 120; // World units shown in radar radius
+        const radarRange = 95;
 
         ctx.clearRect(0, 0, width, height);
 
-        // Center player position
         const px = this.player.position.x;
         const pz = this.player.position.z;
 
-        // Draw radar concentric grid rings
+        // Draw radar rings
         ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(cx, cy, radius * 0.4, 0, Math.PI * 2);
+        ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(cx, cy, radius * 0.75, 0, Math.PI * 2);
+        ctx.arc(cx, cy, radius * 0.8, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Crosshairs
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.15)';
-        ctx.beginPath();
-        ctx.moveTo(cx, 4);
-        ctx.lineTo(cx, height - 4);
-        ctx.moveTo(4, cy);
-        ctx.lineTo(width - 4, cy);
-        ctx.stroke();
-
-        // Draw Beacons on Radar
-        this.world.beacons.forEach((b) => {
-            const dx = b.pos.x - px;
-            const dz = b.pos.z - pz;
+        const drawBlip = (targetPos, colorStr, size = 4) => {
+            const dx = targetPos.x - px;
+            const dz = targetPos.z - pz;
             const dist = Math.sqrt(dx * dx + dz * dz);
             const angle = Math.atan2(dz, dx) - (this.cameraYaw - Math.PI / 2);
 
             let r = (dist / radarRange) * radius;
-            r = Math.min(r, radius - 6);
+            r = Math.min(r, radius - 5);
 
             const bx = cx + Math.sin(angle) * r;
             const by = cy - Math.cos(angle) * r;
 
-            ctx.fillStyle = b.activated ? '#00f0ff' : '#' + b.color.toString(16).padStart(6, '0');
-            ctx.shadowColor = ctx.fillStyle;
-            ctx.shadowBlur = b.activated ? 10 : 4;
-
+            ctx.fillStyle = colorStr;
+            ctx.shadowColor = colorStr;
+            ctx.shadowBlur = 6;
             ctx.beginPath();
-            ctx.arc(bx, by, b.activated ? 5 : 4, 0, Math.PI * 2);
+            ctx.arc(bx, by, size, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
-        });
+        };
 
-        // Draw Apex Sanctuary
-        const adx = this.world.apexPos.x - px;
-        const adz = this.world.apexPos.z - pz;
-        const aDist = Math.sqrt(adx * adx + adz * adz);
-        const aAngle = Math.atan2(adz, adx) - (this.cameraYaw - Math.PI / 2);
-        let ar = (aDist / radarRange) * radius;
-        ar = Math.min(ar, radius - 6);
-        const ax = cx + Math.sin(aAngle) * ar;
-        const ay = cy - Math.cos(aAngle) * ar;
+        // Draw current puzzle objectives on radar
+        if (this.world.currentLevel === 1) {
+            // Relic Keys
+            this.world.relicKeys.forEach(r => {
+                if (!r.collected) drawBlip(r.pos, '#00f0ff', 4);
+            });
+            // Altar Pad
+            if (this.world.altarPad) drawBlip(this.world.altarPad.pos, '#22c55e', 5);
+            // Gate 1
+            if (this.world.gate1 && this.world.gate1.active) drawBlip(this.world.gate1.group.position, '#ff007b', 4);
+        } else if (this.world.currentLevel === 2) {
+            // Sequence Pillars
+            this.world.sequencePillars.forEach(p => {
+                drawBlip(p.pos, p.activated ? '#22c55e' : '#' + p.colorHex.toString(16).padStart(6, '0'), 5);
+            });
+            // Gate 2
+            if (this.world.gate2 && this.world.gate2.active) drawBlip(this.world.gate2.group.position, '#a855f7', 4);
+        } else if (this.world.currentLevel === 3) {
+            // Timed Plates
+            this.world.timedPlates.forEach(tp => {
+                drawBlip(tp.pos, tp.activated ? '#22c55e' : '#f59e0b', 5);
+            });
+            // Gate 3
+            if (this.world.gate3 && this.world.gate3.active) drawBlip(this.world.gate3.group.position, '#00f0ff', 5);
+        } else {
+            // Apex Core
+            drawBlip(this.world.apexPos, '#ffffff', 6);
+        }
 
-        ctx.fillStyle = this.world.apexUnlocked ? '#ffffff' : '#ff007b';
-        ctx.beginPath();
-        ctx.arc(ax, ay, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Player marker at center: arrow pointing towards player facing direction
+        // Player marker at center
         ctx.save();
         ctx.translate(cx, cy);
         const playerRelativeAngle = this.player.rotation - (this.cameraYaw - Math.PI);
@@ -696,38 +706,31 @@ class Game {
         ctx.restore();
     }
 
-    checkVictory() {
+    showVictoryScreen() {
         if (this.isGameOver) return;
+        this.isGameOver = true;
+        window.audioManager.playBeaconActivate();
 
-        // Victory condition: All 3 beacons active AND player reached Apex Sanctuary platform
-        if (this.beaconsCount >= 3) {
-            const distToApex = this.player.position.distanceTo(this.world.apexPos);
-            if (distToApex < 18.0 && this.player.position.y >= this.world.apexPos.y - 1.0) {
-                this.isGameOver = true;
-                window.audioManager.playBeaconActivate();
+        const timeElapsedSec = Math.floor((Date.now() - this.gameStartTime) / 1000);
+        const minutes = Math.floor(timeElapsedSec / 60);
+        const seconds = timeElapsedSec % 60;
+        const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-                const timeElapsedSec = Math.floor((Date.now() - this.gameStartTime) / 1000);
-                const minutes = Math.floor(timeElapsedSec / 60);
-                const seconds = timeElapsedSec % 60;
-                const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        document.getElementById('victory-time').textContent = formattedTime;
+        document.getElementById('victory-orbs').textContent = `${this.orbsCollected} / ${this.totalOrbs}`;
 
-                document.getElementById('victory-time').textContent = formattedTime;
-                document.getElementById('victory-orbs').textContent = `${this.orbsCollected} / ${this.totalOrbs}`;
+        const ratingEl = document.getElementById('victory-rating');
+        if (this.orbsCollected >= 14) {
+            ratingEl.textContent = '⭐⭐⭐ Mestre Celestial S+';
+        } else if (this.orbsCollected >= 8) {
+            ratingEl.textContent = '⭐⭐ Guardià de l\'Àpex A';
+        } else {
+            ratingEl.textContent = '⭐ Explorador Aliat B';
+        }
 
-                const ratingEl = document.getElementById('victory-rating');
-                if (this.orbsCollected >= 25) {
-                    ratingEl.textContent = '⭐⭐⭐ Mestre Celestial S+';
-                } else if (this.orbsCollected >= 15) {
-                    ratingEl.textContent = '⭐⭐ Guardià de l\'Àpex A';
-                } else {
-                    ratingEl.textContent = '⭐ Explorador Aliat B';
-                }
-
-                document.getElementById('victory-screen').classList.remove('hidden');
-                if (this.isPointerLocked) {
-                    document.exitPointerLock();
-                }
-            }
+        document.getElementById('victory-screen').classList.remove('hidden');
+        if (this.isPointerLocked) {
+            document.exitPointerLock();
         }
     }
 
@@ -735,42 +738,73 @@ class Game {
         requestAnimationFrame(this.animate);
 
         const rawDt = this.clock.getDelta();
-        const dt = Math.min(rawDt, 0.05); // Clamp dt to prevent tunneling
+        const dt = Math.min(rawDt, 0.05);
 
         if (this.gameStarted) {
             // Update Player
             this.player.update(dt, this.input, this.cameraYaw, this.world);
 
-            // Update World
-            this.world.update(
-                dt,
-                this.player,
-                (orb) => {
+            // Update World with interactive puzzle callbacks
+            this.world.update(dt, this.player, {
+                onRelicCollected: (collected, total) => {
+                    const objText = document.getElementById('objective-text');
+                    if (collected < total) {
+                        if (objText) objText.textContent = `Troba els Cristalls Rúnics (${collected}/${total})`;
+                        this.showToast(`✦ Cristall Rúnic trobat! (${collected}/${total})`);
+                    } else {
+                        if (objText) objText.textContent = `Tots els cristalls trobats! Posa't a l'Altar per obrir la Porta!`;
+                        this.showToast(`✨ Tots els cristalls trobats! Posa't a l'Altar!`);
+                    }
+                },
+                onLevelAdvanced: (newLevel, levelName) => {
+                    this.triggerScreenShake(0.75);
+                    const objTag = document.getElementById('objective-tag');
+                    const objText = document.getElementById('objective-text');
+                    if (objTag) objTag.textContent = `Nivell ${newLevel}`;
+
+                    if (newLevel === 2) {
+                        if (objText) objText.textContent = `Toca els 3 Monòlits en ordre: 1: Ciano ➔ 2: Astral ➔ 3: Solar`;
+                    } else if (newLevel === 3) {
+                        if (objText) objText.textContent = `Activa les 3 Plaques abans que s'esgoti el temps!`;
+                    } else if (newLevel === 4) {
+                        if (objText) objText.textContent = `Ascendeix al Nucli Celestial de l'Àpex!`;
+                    }
+                    this.showToast(`🎉 ${levelName}! Porta oberta!`);
+                },
+                onSequenceStep: (step, total) => {
+                    this.showToast(`🔮 Monòlit correcte! (${step}/${total})`);
+                },
+                onSequenceFail: () => {
+                    this.triggerScreenShake(0.35);
+                    this.showToast(`❌ Ordre incorrecte! Seqüència reiniciada.`);
+                },
+                onTimerUpdate: (remaining) => {
+                    const timerEl = document.getElementById('puzzle-timer');
+                    if (timerEl) {
+                        timerEl.classList.remove('hidden');
+                        timerEl.textContent = `⏱️ ${remaining}s`;
+                    }
+                },
+                onTimerExpired: () => {
+                    this.triggerScreenShake(0.4);
+                    this.showToast(`⌛ S'ha esgotat el temps! Torna a intentar-ho.`);
+                    const timerEl = document.getElementById('puzzle-timer');
+                    if (timerEl) timerEl.classList.add('hidden');
+                },
+                onVictory: () => {
+                    this.showVictoryScreen();
+                },
+                onOrbCollected: (orb) => {
                     this.orbsCollected++;
                     this.showToast(`+1 Orbe de Llum! (${this.orbsCollected}/${this.totalOrbs})`);
-                },
-                (beacon) => {
-                    this.beaconsCount++;
-                    this.triggerScreenShake(0.65);
-                    const dot = document.getElementById(`beacon-dot-${beacon.id}`);
-                    if (dot) dot.classList.add('active');
-
-                    if (this.beaconsCount < 3) {
-                        this.showToast(`🌟 ${beacon.name} Activat! [${this.beaconsCount}/3]`);
-                    } else {
-                        this.showToast(`⚡ TOTS ELS FARS ACTIVATS! Santuari de l'Àpex desbloquejat!`);
-                    }
                 }
-            );
+            });
 
             // Camera follow
             this.updateCamera(dt);
 
             // UI & Radar
             this.updateUI();
-
-            // Check Victory
-            this.checkVictory();
 
             // Reset one-frame input triggers
             this.input.jumpJustPressed = false;

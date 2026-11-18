@@ -1,37 +1,55 @@
 /**
- * AETHERIA - World, Archipelago, Beacons, Moving Platforms, Collectibles & Particle FX
+ * AETHERIA - Progressive Multi-Level World with Gated Puzzles & Non-Intersecting Platforms
  */
 class World {
     constructor(scene) {
         this.scene = scene;
 
-        // Collision Platforms list { min: Vector3, max: Vector3, mesh: Mesh, deltaPos: Vector3 }
+        // Collision & Physics
         this.platforms = [];
         this.movingPlatforms = [];
 
-        // Interactive Objects
+        // Progressive Levels State
+        this.currentLevel = 1;
+        this.maxLevel = 4;
+
+        // Level 1: Relic Keys & Altar
+        this.relicKeys = [];
+        this.relicsCollected = 0;
+        this.altarPad = null;
+        this.gate1 = null;
+
+        // Level 2: Sequence Puzzle
+        this.sequencePillars = [];
+        this.sequenceTarget = [0, 1, 2]; // Cyan, Purple, Gold
+        this.sequenceCurrentStep = 0;
+        this.gate2 = null;
+        this.monolithDisplay = null;
+
+        // Level 3: Timed Pressure Plates
+        this.timedPlates = [];
+        this.timerActive = false;
+        this.timerSeconds = 35;
+        this.timerRemaining = 35;
+        this.gate3 = null;
+        this.apexVortex = null;
+
+        // Level 4: Apex Core
+        this.apexPos = new THREE.Vector3(190, 80, 0);
+        this.apexCore = null;
+        this.apexReached = false;
+
+        // Collectibles & Props
         this.orbs = [];
         this.jumpPads = [];
         this.speedRings = [];
-        this.beacons = [
-            { id: 'solar', name: 'Far Solar', pos: new THREE.Vector3(75, 22, -10), activated: false, color: 0xffb800 },
-            { id: 'lunar', name: 'Far Lunar', pos: new THREE.Vector3(-80, 18, 40), activated: false, color: 0x9333ea },
-            { id: 'astral', name: 'Far Astral', pos: new THREE.Vector3(15, 30, 95), activated: false, color: 0x00f0ff }
-        ];
-
-        // Apex Sanctuary
-        this.apexPos = new THREE.Vector3(0, 52, 0);
-        this.apexUnlocked = false;
-
-        // Particle Manager
-        this.particles = [];
         this.activeTransientParticles = [];
 
-        // Environment & Lighting
-        this.timeOfDay = 2; // 0: Dawn, 1: Day, 2: Sunset, 3: Night
+        // Environment
+        this.timeOfDay = 2; // Sunset
         this.initProceduralTextures();
         this.initEnvironment();
-        this.buildWorld();
+        this.buildProgressiveWorld();
         this.initAmbientParticles();
     }
 
@@ -47,26 +65,22 @@ class World {
         gGrad.addColorStop(1, '#15803d');
         gctx.fillStyle = gGrad;
         gctx.fillRect(0, 0, 512, 512);
-        // Grass flecks
         gctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
         for (let i = 0; i < 2000; i++) {
-            const rx = Math.random() * 512;
-            const ry = Math.random() * 512;
-            gctx.fillRect(rx, ry, 2 + Math.random() * 3, 4 + Math.random() * 6);
+            gctx.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 3, 4 + Math.random() * 6);
         }
         this.grassTex = new THREE.CanvasTexture(gCanvas);
         this.grassTex.wrapS = THREE.RepeatWrapping;
         this.grassTex.wrapT = THREE.RepeatWrapping;
         this.grassTex.repeat.set(4, 4);
 
-        // 2. Stylized Stone / Cliff Canvas
+        // 2. Stone Canvas
         const sCanvas = document.createElement('canvas');
         sCanvas.width = 256;
         sCanvas.height = 256;
         const sctx = sCanvas.getContext('2d');
         sctx.fillStyle = '#334155';
         sctx.fillRect(0, 0, 256, 256);
-        // Rock strata lines
         sctx.fillStyle = '#1e293b';
         for (let y = 0; y < 256; y += 18) {
             sctx.fillRect(0, y + (Math.random() - 0.5) * 6, 256, 4 + Math.random() * 5);
@@ -75,105 +89,48 @@ class World {
         this.stoneTex.wrapS = THREE.RepeatWrapping;
         this.stoneTex.wrapT = THREE.RepeatWrapping;
 
-        // 3. Glowing Rune Canvas
-        const rCanvas = document.createElement('canvas');
-        rCanvas.width = 256;
-        rCanvas.height = 256;
-        const rctx = rCanvas.getContext('2d');
-        rctx.fillStyle = '#0f172a';
-        rctx.fillRect(0, 0, 256, 256);
-        rctx.strokeStyle = '#00f0ff';
-        rctx.lineWidth = 6;
-        rctx.shadowColor = '#00f0ff';
-        rctx.shadowBlur = 12;
-        // Draw geometric runes
-        rctx.strokeRect(40, 40, 176, 176);
-        rctx.beginPath();
-        rctx.arc(128, 128, 60, 0, Math.PI * 2);
-        rctx.moveTo(128, 40);
-        rctx.lineTo(128, 216);
-        rctx.moveTo(40, 128);
-        rctx.lineTo(216, 128);
-        rctx.stroke();
-
-        this.runeTex = new THREE.CanvasTexture(rCanvas);
-
-        // Common Materials
-        this.grassMat = new THREE.MeshStandardMaterial({
-            map: this.grassTex,
-            roughness: 0.8,
-            metalness: 0.1
-        });
-
-        this.stoneMat = new THREE.MeshStandardMaterial({
-            map: this.stoneTex,
-            roughness: 0.7,
-            metalness: 0.2
-        });
-
-        this.marbleMat = new THREE.MeshStandardMaterial({
-            color: 0xf1f5f9,
-            roughness: 0.3,
-            metalness: 0.1
-        });
-
-        this.runeMat = new THREE.MeshStandardMaterial({
-            map: this.runeTex,
-            emissive: 0x00f0ff,
-            emissiveMap: this.runeTex,
-            emissiveIntensity: 0.8,
-            roughness: 0.4
-        });
+        // Materials
+        this.grassMat = new THREE.MeshStandardMaterial({ map: this.grassTex, roughness: 0.8, metalness: 0.1 });
+        this.stoneMat = new THREE.MeshStandardMaterial({ map: this.stoneTex, roughness: 0.7, metalness: 0.2 });
+        this.marbleMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.1 });
+        this.altarMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x00f0ff, emissiveIntensity: 0.5 });
     }
 
     initEnvironment() {
-        // Sky Dome
-        const skyGeo = new THREE.SphereGeometry(600, 32, 32);
-        const skyMat = new THREE.MeshBasicMaterial({
-            color: 0x1e1b4b,
-            side: THREE.BackSide
-        });
+        const skyGeo = new THREE.SphereGeometry(750, 32, 32);
+        const skyMat = new THREE.MeshBasicMaterial({ color: 0x1e1b4b, side: THREE.BackSide });
         this.skyDome = new THREE.Mesh(skyGeo, skyMat);
         this.scene.add(this.skyDome);
 
-        // Sunlight
-        this.dirLight = new THREE.DirectionalLight(0xfff1e6, 1.8);
-        this.dirLight.position.set(120, 200, 100);
+        this.dirLight = new THREE.DirectionalLight(0xffedd5, 1.8);
+        this.dirLight.position.set(160, 220, 100);
         this.dirLight.castShadow = true;
         this.dirLight.shadow.mapSize.width = 2048;
         this.dirLight.shadow.mapSize.height = 2048;
         this.dirLight.shadow.camera.near = 10;
-        this.dirLight.shadow.camera.far = 450;
-        this.dirLight.shadow.camera.left = -160;
-        this.dirLight.shadow.camera.right = 160;
-        this.dirLight.shadow.camera.top = 160;
-        this.dirLight.shadow.camera.bottom = -160;
+        this.dirLight.shadow.camera.far = 600;
+        this.dirLight.shadow.camera.left = -220;
+        this.dirLight.shadow.camera.right = 220;
+        this.dirLight.shadow.camera.top = 220;
+        this.dirLight.shadow.camera.bottom = -220;
         this.dirLight.shadow.bias = -0.0005;
         this.scene.add(this.dirLight);
 
-        // Ambient Light
         this.ambientLight = new THREE.AmbientLight(0x7dd3fc, 0.7);
         this.scene.add(this.ambientLight);
 
-        // Fog
-        this.scene.fog = new THREE.FogExp2(0x312e81, 0.0035);
-
+        this.scene.fog = new THREE.FogExp2(0x311028, 0.003);
         this.applyTimeOfDay(this.timeOfDay);
     }
 
     applyTimeOfDay(idx) {
         this.timeOfDay = idx % 4;
         const presets = [
-            // 0: Dawn
             { sky: 0xf472b6, light: 0xffedd5, amb: 0xfbcfe8, fog: 0xf472b6, lightInt: 1.4, ambInt: 0.6 },
-            // 1: Day
             { sky: 0x38bdf8, light: 0xffffff, amb: 0xbae6fd, fog: 0x7dd3fc, lightInt: 2.0, ambInt: 0.8 },
-            // 2: Sunset
             { sky: 0x431407, light: 0xf97316, amb: 0xa855f7, fog: 0x311028, lightInt: 1.6, ambInt: 0.6 },
-            // 3: Cyber Night
             { sky: 0x050814, light: 0x00f0ff, amb: 0x1e1b4b, fog: 0x070b19, lightInt: 0.9, ambInt: 0.5 }
         ];
-
         const p = presets[this.timeOfDay];
         this.skyDome.material.color.setHex(p.sky);
         this.dirLight.color.setHex(p.light);
@@ -189,480 +146,398 @@ class World {
         return names[this.timeOfDay];
     }
 
-    buildWorld() {
-        // 1. Central Sanctuary Island (Main Hub)
-        this.createFloatingIsland(new THREE.Vector3(0, 0, 0), 45, 12, true);
+    buildProgressiveWorld() {
+        // ==========================================
+        // NIVELL 1: EL DESPERTAR RÚNIC (Pos: 0, 0, 0)
+        // ==========================================
+        this.createFloatingIsland(new THREE.Vector3(0, 0, 0), 28, 12);
         this.createTempleRuins(new THREE.Vector3(0, 0, 0));
 
-        // 2. Solar Spires (East Island)
-        this.createFloatingIsland(new THREE.Vector3(75, 14, -10), 28, 16);
-        this.createCrystalSpires(new THREE.Vector3(75, 14, -10), 0xffb800);
-        this.createBeacon(this.beacons[0]);
-
-        // Stepping stone platforms connecting Hub to East Island
-        this.createPlatform(new THREE.Vector3(32, 4, -4), new THREE.Vector3(7, 2, 7));
-        this.createPlatform(new THREE.Vector3(48, 8, -6), new THREE.Vector3(8, 2, 8));
-
-        // 3. Lunar Ruins (West Island)
-        this.createFloatingIsland(new THREE.Vector3(-80, 10, 40), 32, 14);
-        this.createBeacon(this.beacons[1]);
-
-        // Moving platforms connecting Hub to West Island!
-        this.createMovingPlatform(
-            new THREE.Vector3(-35, 4, 18),
-            new THREE.Vector3(-55, 7, 28),
-            new THREE.Vector3(8, 2, 8),
-            0.5
+        // Gate 1 (Forcefield Barrier blocking exit to Level 2)
+        this.gate1 = this.createEnergyGate(
+            new THREE.Vector3(26, 3, 0),
+            new THREE.Vector3(1.4, 6.5, 9),
+            0xff007b,
+            "Barrera Rúnica 1"
         );
 
-        // 4. Astral Forge (North Island)
-        this.createFloatingIsland(new THREE.Vector3(15, 20, 95), 34, 18);
-        this.createBeacon(this.beacons[2]);
+        // Altar Pad on Island 1 (Discharges 3 Relic Keys)
+        this.altarPad = this.createAltarPad(new THREE.Vector3(16, 1.5, 0));
 
-        // Moving vertical elevator platform
-        this.createMovingPlatform(
-            new THREE.Vector3(8, 6, 45),
-            new THREE.Vector3(12, 16, 68),
-            new THREE.Vector3(9, 2, 9),
-            0.4
+        // 3 Relic Keys hidden on Island 1
+        this.createRelicKey(0, new THREE.Vector3(0, 12.5, 0));       // On top of central temple column!
+        this.createRelicKey(1, new THREE.Vector3(-14, 3.2, 14));     // Behind stone arch
+        this.createRelicKey(2, new THREE.Vector3(-18, 2.5, -16));    // On rocky ledge
+
+        // Jump Pad 1 (behind Gate 1, launches to Level 2 when Gate 1 opens)
+        this.jumpPad1 = this.createJumpPad(new THREE.Vector3(30, 1.5, 0), 32);
+
+        // ==========================================
+        // NIVELL 2: LES AGULLES DE CRISTALL (Pos: 90, 14, 0)
+        // ==========================================
+        // Distance from Island 1: 90 units (34 units of open sky, NO intersection!)
+        this.createFloatingIsland(new THREE.Vector3(90, 14, 0), 28, 14);
+
+        // Gate 2 (Blocking exit to Level 3)
+        this.gate2 = this.createEnergyGate(
+            new THREE.Vector3(116, 17, 0),
+            new THREE.Vector3(1.4, 6.5, 9),
+            0xa855f7,
+            "Barrera Rúnica 2"
         );
 
-        // 5. Apex Sanctuary (High Center)
-        this.createApexSanctuary();
+        // Monolith Guide (Shows the Sequence Order)
+        this.createSequenceGuide(new THREE.Vector3(90, 15.5, 0));
 
-        // 6. Interactive Mechanics
-        this.createJumpPads();
-        this.createSpeedRings();
-        this.createCollectibles();
-        this.createFloatingClouds();
+        // 3 Sequence Pillars (Cyan, Purple, Gold)
+        this.createSequencePillar(0, new THREE.Vector3(76, 15.5, -12), 0x00f0ff, "1: Ciano");
+        this.createSequencePillar(1, new THREE.Vector3(88, 15.5, 14), 0xa855f7, "2: Astral");
+        this.createSequencePillar(2, new THREE.Vector3(104, 15.5, -10), 0xffb800, "3: Solar");
+
+        // 2 Non-Intersecting Moving Platforms between Level 2 and Level 3
+        // Platform M1: Operates at X=130, Y=20, Z=[-8 to 8]
+        this.platM1 = this.createMovingPlatform(
+            new THREE.Vector3(130, 20, -8),
+            new THREE.Vector3(130, 20, 8),
+            new THREE.Vector3(7, 1.5, 7),
+            0.6
+        );
+
+        // Platform M2: Operates at X=150, Y=24, Z=[8 to -8] (completely separated in X and Y!)
+        this.platM2 = this.createMovingPlatform(
+            new THREE.Vector3(150, 24, 8),
+            new THREE.Vector3(150, 24, -8),
+            new THREE.Vector3(7, 1.5, 7),
+            0.55
+        );
+
+        // Speed Ring to assist glide between M1 and M2
+        this.createSpeedRing(new THREE.Vector3(140, 23, 0), 0);
+
+        // ==========================================
+        // NIVELL 3: LA FARGA TEMPORAL (Pos: 190, 28, 0)
+        // ==========================================
+        // Distance from Island 2: 100 units (NO intersection!)
+        this.createFloatingIsland(new THREE.Vector3(190, 28, 0), 32, 16);
+
+        // Gate 3 (Encircles the Central Apex Vortex)
+        this.gate3 = this.createEnergyGate(
+            new THREE.Vector3(190, 31, 0),
+            new THREE.Vector3(9, 6.5, 1.4),
+            0x00f0ff,
+            "Barrera de l'Àpex"
+        );
+
+        // 3 Timed Pressure Plates situated around Island 3
+        this.createTimedPlate(0, new THREE.Vector3(170, 29.5, -18));
+        this.createTimedPlate(1, new THREE.Vector3(210, 29.5, -18));
+        this.createTimedPlate(2, new THREE.Vector3(190, 29.5, 20));
+
+        // Central Super Vortex (Launches directly to Level 4: Apex Sanctuary)
+        this.apexVortex = this.createJumpPad(new THREE.Vector3(190, 29.5, 0), 48);
+
+        // ==========================================
+        // NIVELL 4: EL SANTUARI DE L'ÀPEX (Pos: 190, 80, 0)
+        // ==========================================
+        // High above Island 3 in the stratosphere!
+        this.createApexSanctuary(this.apexPos);
+
+        // Distributed Collectible Light Orbs
+        this.createOrbs();
+        this.createClouds();
     }
 
-    createFloatingIsland(pos, radius, height, isMain = false) {
-        const islandGroup = new THREE.Group();
-        islandGroup.position.copy(pos);
+    createFloatingIsland(pos, radius, height) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
 
-        // Grassy top cylinder
-        const topGeo = new THREE.CylinderGeometry(radius, radius * 0.9, 3, 16);
+        // Top cylinder (walking platform)
+        const topGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 3, 20);
         const topMesh = new THREE.Mesh(topGeo, this.grassMat);
-        topMesh.position.y = 0;
         topMesh.receiveShadow = true;
         topMesh.castShadow = true;
-        islandGroup.add(topMesh);
+        group.add(topMesh);
 
-        // Register top as collision platform
+        // Solid platform collision registration
         this.registerPlatform(
             new THREE.Vector3(pos.x - radius, pos.y - 1.5, pos.z - radius),
             new THREE.Vector3(pos.x + radius, pos.y + 1.5, pos.z + radius),
             topMesh
         );
 
-        // Inverted Cone / Rocky underside
-        const underGeo = new THREE.ConeGeometry(radius * 0.9, height, 16);
+        // Rocky bottom cone
+        const underGeo = new THREE.ConeGeometry(radius * 0.92, height, 20);
         underGeo.rotateX(Math.PI);
         const underMesh = new THREE.Mesh(underGeo, this.stoneMat);
         underMesh.position.y = -height / 2 - 1.5;
         underMesh.castShadow = true;
-        underMesh.receiveShadow = true;
-        islandGroup.add(underMesh);
-
-        // Floating perimeter crystal shards
-        for (let i = 0; i < 4; i++) {
-            const angle = (i / 4) * Math.PI * 2 + 0.3;
-            const dist = radius + 6 + Math.random() * 4;
-            const shardGeo = new THREE.OctahedronGeometry(2 + Math.random() * 2, 0);
-            const shardMat = new THREE.MeshStandardMaterial({
-                color: isMain ? 0x00f0ff : 0xa855f7,
-                emissive: isMain ? 0x00f0ff : 0xa855f7,
-                emissiveIntensity: 0.4,
-                roughness: 0.3
-            });
-            const shard = new THREE.Mesh(shardGeo, shardMat);
-            shard.position.set(Math.cos(angle) * dist, -3 - Math.random() * 6, Math.sin(angle) * dist);
-            islandGroup.add(shard);
-        }
-
-        this.scene.add(islandGroup);
-    }
-
-    createTempleRuins(centerPos) {
-        // Ancient Columns & Stone Arches on main island
-        for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2;
-            const colGeo = new THREE.CylinderGeometry(1.2, 1.4, 10, 12);
-            const col = new THREE.Mesh(colGeo, this.marbleMat);
-            const x = centerPos.x + Math.cos(angle) * 22;
-            const z = centerPos.z + Math.sin(angle) * 22;
-            col.position.set(x, centerPos.y + 6.5, z);
-            col.castShadow = true;
-            col.receiveShadow = true;
-            this.scene.add(col);
-
-            // Capital block on top
-            const capGeo = new THREE.BoxGeometry(3.2, 1.0, 3.2);
-            const cap = new THREE.Mesh(capGeo, this.marbleMat);
-            cap.position.set(x, centerPos.y + 11.5, z);
-            cap.castShadow = true;
-            this.scene.add(cap);
-
-            // Register platform on top of columns for secret parkour!
-            this.registerPlatform(
-                new THREE.Vector3(x - 1.6, centerPos.y + 10.8, z - 1.6),
-                new THREE.Vector3(x + 1.6, centerPos.y + 12.0, z + 1.6),
-                cap
-            );
-        }
-
-        // Central Stone Archway
-        const archGeo = new THREE.TorusGeometry(8, 1.2, 12, 24, Math.PI);
-        const arch = new THREE.Mesh(archGeo, this.marbleMat);
-        arch.position.set(centerPos.x, centerPos.y + 1.5, centerPos.z - 12);
-        arch.castShadow = true;
-        this.scene.add(arch);
-    }
-
-    createCrystalSpires(pos, colorHex) {
-        for (let i = 0; i < 5; i++) {
-            const h = 12 + Math.random() * 14;
-            const geo = new THREE.ConeGeometry(2.0, h, 6);
-            const mat = new THREE.MeshStandardMaterial({
-                color: colorHex,
-                emissive: colorHex,
-                emissiveIntensity: 0.6,
-                roughness: 0.2
-            });
-            const spire = new THREE.Mesh(geo, mat);
-            const angle = Math.random() * Math.PI * 2;
-            const r = 8 + Math.random() * 12;
-            spire.position.set(pos.x + Math.cos(angle) * r, pos.y + h / 2 + 1.5, pos.z + Math.sin(angle) * r);
-            spire.castShadow = true;
-            this.scene.add(spire);
-        }
-    }
-
-    createBeacon(beaconData) {
-        const group = new THREE.Group();
-        group.position.copy(beaconData.pos);
-
-        // Stone Base Plinth
-        const baseGeo = new THREE.CylinderGeometry(5.0, 5.8, 1.5, 12);
-        const base = new THREE.Mesh(baseGeo, this.marbleMat);
-        base.position.y = 0.75;
-        base.receiveShadow = true;
-        group.add(base);
-
-        // Rune Pad on top
-        const padGeo = new THREE.CylinderGeometry(3.5, 3.5, 0.4, 16);
-        const pad = new THREE.Mesh(padGeo, this.runeMat);
-        pad.position.y = 1.6;
-        pad.receiveShadow = true;
-        group.add(pad);
-
-        // Floating Core Crystal
-        const crystalGeo = new THREE.OctahedronGeometry(2.2, 0);
-        const crystalMat = new THREE.MeshStandardMaterial({
-            color: beaconData.color,
-            emissive: beaconData.color,
-            emissiveIntensity: 0.7,
-            roughness: 0.1
-        });
-        const crystal = new THREE.Mesh(crystalGeo, crystalMat);
-        crystal.position.y = 5.5;
-        group.add(crystal);
-        beaconData.crystalMesh = crystal;
-
-        // Rotating Energy Ring around crystal
-        const ringGeo = new THREE.TorusGeometry(3.6, 0.2, 12, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color: beaconData.color, wireframe: true });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.position.y = 5.5;
-        ring.rotation.x = Math.PI / 2;
-        group.add(ring);
-        beaconData.ringMesh = ring;
-
-        // Massive Sky Beam (initially hidden/faint)
-        const beamGeo = new THREE.CylinderGeometry(1.2, 1.8, 300, 16, 1, true);
-        const beamMat = new THREE.MeshBasicMaterial({
-            color: beaconData.color,
-            transparent: true,
-            opacity: 0.0,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide
-        });
-        const beam = new THREE.Mesh(beamGeo, beamMat);
-        beam.position.y = 150;
-        group.add(beam);
-        beaconData.beamMesh = beam;
-
-        // Register platform for player to step on
-        this.registerPlatform(
-            new THREE.Vector3(beaconData.pos.x - 4, beaconData.pos.y, beaconData.pos.z - 4),
-            new THREE.Vector3(beaconData.pos.x + 4, beaconData.pos.y + 1.8, beaconData.pos.z + 4),
-            base
-        );
+        group.add(underMesh);
 
         this.scene.add(group);
     }
 
-    createApexSanctuary() {
-        this.apexGroup = new THREE.Group();
-        this.apexGroup.position.copy(this.apexPos);
+    createEnergyGate(pos, size, colorHex, name) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
 
-        // Floating Golden Temple Platform
-        const platGeo = new THREE.CylinderGeometry(20, 16, 3, 16);
-        const platMesh = new THREE.Mesh(platGeo, this.marbleMat);
-        this.apexGroup.add(platMesh);
+        // Monolith pillars on left & right of gate
+        const pillarGeo = new THREE.BoxGeometry(1.6, size.y + 1.5, 1.8);
+        const leftPillar = new THREE.Mesh(pillarGeo, this.marbleMat);
+        leftPillar.position.set(-size.x / 2 - 0.8, size.y / 2, 0);
+        leftPillar.castShadow = true;
+        group.add(leftPillar);
 
-        // Apex Stone Underside
-        const underGeo = new THREE.ConeGeometry(16, 18, 16);
-        underGeo.rotateX(Math.PI);
-        const underMesh = new THREE.Mesh(underGeo, this.stoneMat);
-        underMesh.position.y = -10.5;
-        this.apexGroup.add(underMesh);
+        const rightPillar = leftPillar.clone();
+        rightPillar.position.x = size.x / 2 + 0.8;
+        group.add(rightPillar);
 
-        // Celestial Core Sphere
-        const coreGeo = new THREE.IcosahedronGeometry(4.5, 2);
-        const coreMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0x00f0ff,
-            emissiveIntensity: 1.5,
-            roughness: 0.1
-        });
-        this.apexCore = new THREE.Mesh(coreGeo, coreMat);
-        this.apexCore.position.y = 7;
-        this.apexGroup.add(this.apexCore);
-
-        // Forcefield Dome (Visible while locked, dissolves when unlocked!)
-        const domeGeo = new THREE.SphereGeometry(22, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.5);
-        this.forcefieldMat = new THREE.MeshBasicMaterial({
-            color: 0xff007b,
-            wireframe: true,
+        // Forcefield Barrier Mesh
+        const barrierGeo = new THREE.BoxGeometry(size.x, size.y, size.z);
+        const barrierMat = new THREE.MeshBasicMaterial({
+            color: colorHex,
             transparent: true,
-            opacity: 0.6
+            opacity: 0.65,
+            wireframe: false,
+            blending: THREE.AdditiveBlending
         });
-        this.forcefield = new THREE.Mesh(domeGeo, this.forcefieldMat);
-        this.forcefield.position.y = 0;
-        this.apexGroup.add(this.forcefield);
+        const barrierMesh = new THREE.Mesh(barrierGeo, barrierMat);
+        barrierMesh.position.y = size.y / 2;
+        group.add(barrierMesh);
 
-        // Register platform
-        this.registerPlatform(
-            new THREE.Vector3(this.apexPos.x - 18, this.apexPos.y - 1.5, this.apexPos.z - 18),
-            new THREE.Vector3(this.apexPos.x + 18, this.apexPos.y + 1.5, this.apexPos.z + 18),
-            platMesh
-        );
+        this.scene.add(group);
 
-        this.scene.add(this.apexGroup);
+        const gateObj = {
+            name: name,
+            mesh: barrierMesh,
+            group: group,
+            active: true,
+            colorHex: colorHex,
+            min: new THREE.Vector3(pos.x - size.x / 2 - 0.5, pos.y, pos.z - size.z / 2 - 0.5),
+            max: new THREE.Vector3(pos.x + size.x / 2 + 0.5, pos.y + size.y, pos.z + size.z / 2 + 0.5),
+            isBarrier: true
+        };
+
+        // Register as solid barrier in platforms
+        this.platforms.push(gateObj);
+        return gateObj;
     }
 
-    unlockApex() {
-        this.apexUnlocked = true;
-        // Fade out forcefield dome
-        this.forcefield.visible = false;
-
-        // Create Super Light Elevator / Launch Vortex on Main Hub to reach Apex directly!
-        this.createSuperJumpVortex(new THREE.Vector3(0, 1.5, 0));
+    dissolveGate(gateObj) {
+        if (!gateObj || !gateObj.active) return;
+        gateObj.active = false;
+        gateObj.mesh.visible = false;
+        window.audioManager.playGateDissolve();
+        this.spawnExpandingRing(gateObj.group.position, gateObj.colorHex, 2.0, 16.0);
     }
 
-    createSuperJumpVortex(pos) {
-        const padGeo = new THREE.CylinderGeometry(5.0, 5.0, 0.4, 24);
-        const padMat = new THREE.MeshStandardMaterial({
-            color: 0x00f0ff,
-            emissive: 0x00f0ff,
-            emissiveIntensity: 2.0
-        });
-        const pad = new THREE.Mesh(padGeo, padMat);
-        pad.position.copy(pos);
-        this.scene.add(pad);
+    createAltarPad(pos) {
+        const geo = new THREE.CylinderGeometry(3.5, 3.8, 0.4, 20);
+        const mesh = new THREE.Mesh(geo, this.altarMat);
+        mesh.position.copy(pos);
+        mesh.receiveShadow = true;
+        this.scene.add(mesh);
 
-        // Register super jump pad
-        this.jumpPads.push({
+        return {
             pos: pos,
-            radius: 4.5,
-            power: 45, // Shoots player straight to Apex Sanctuary!
-            mesh: pad
-        });
+            radius: 3.5,
+            mesh: mesh,
+            activated: false
+        };
     }
 
-    createJumpPads() {
-        // High-velocity launch pads positioned strategically
-        const padLocations = [
-            new THREE.Vector3(18, 1.5, -16),  // Hub -> Launch toward East Solar
-            new THREE.Vector3(-18, 1.5, -16), // Hub -> Launch toward West Lunar
-            new THREE.Vector3(0, 1.5, 24),    // Hub -> Launch toward North Astral
-            new THREE.Vector3(58, 15.5, -8),  // Solar lower -> Solar peak
-            new THREE.Vector3(-60, 11.5, 30), // Lunar approach pad
-            new THREE.Vector3(12, 21.5, 75)   // Astral approach pad
-        ];
+    createRelicKey(id, pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
 
-        padLocations.forEach(pos => {
-            const padGroup = new THREE.Group();
-            padGroup.position.copy(pos);
-
-            const baseGeo = new THREE.CylinderGeometry(2.0, 2.4, 0.5, 16);
-            const baseMesh = new THREE.Mesh(baseGeo, this.marbleMat);
-            padGroup.add(baseMesh);
-
-            const plateGeo = new THREE.CylinderGeometry(1.6, 1.6, 0.3, 16);
-            const plateMat = new THREE.MeshStandardMaterial({
-                color: 0x00f0ff,
-                emissive: 0x00f0ff,
-                emissiveIntensity: 1.2
-            });
-            const plateMesh = new THREE.Mesh(plateGeo, plateMat);
-            plateMesh.position.y = 0.35;
-            padGroup.add(plateMesh);
-
-            this.scene.add(padGroup);
-
-            this.jumpPads.push({
-                pos: pos,
-                radius: 2.2,
-                power: 32, // standard high launch
-                mesh: plateMesh
-            });
-        });
-    }
-
-    createSpeedRings() {
-        // Speed boost accelerator rings suspended in air
-        const ringConfigs = [
-            { pos: new THREE.Vector3(45, 18, -8), rotY: Math.PI / 4 },
-            { pos: new THREE.Vector3(-45, 16, 25), rotY: -Math.PI / 4 },
-            { pos: new THREE.Vector3(10, 24, 55), rotY: 0 },
-            { pos: new THREE.Vector3(0, 36, 0), rotY: 0 } // high altitude glide ring
-        ];
-
-        ringConfigs.forEach(cfg => {
-            const geo = new THREE.TorusGeometry(3.5, 0.4, 12, 32);
-            const mat = new THREE.MeshStandardMaterial({
-                color: 0x00f0ff,
-                emissive: 0x00f0ff,
-                emissiveIntensity: 1.6,
-                roughness: 0.1
-            });
-            const ring = new THREE.Mesh(geo, mat);
-            ring.position.copy(cfg.pos);
-            ring.rotation.y = cfg.rotY;
-            this.scene.add(ring);
-
-            this.speedRings.push({
-                pos: cfg.pos,
-                radius: 3.5,
-                mesh: ring,
-                cooldown: 0
-            });
-        });
-    }
-
-    createCollectibles() {
-        // 30 Light Orbs distributed across islands and in gliding flight paths!
-        const orbPoints = [
-            // Sanctuary Hub ground & arches
-            new THREE.Vector3(0, 3.5, -6),
-            new THREE.Vector3(10, 3.5, 10),
-            new THREE.Vector3(-10, 3.5, 10),
-            new THREE.Vector3(0, 13.5, 22),
-            new THREE.Vector3(18, 13.5, 10),
-            new THREE.Vector3(-18, 13.5, 10),
-            // Aerial flight paths between islands (glide rewards!)
-            new THREE.Vector3(30, 16, -6),
-            new THREE.Vector3(42, 19, -8),
-            new THREE.Vector3(56, 21, -9),
-            new THREE.Vector3(-30, 14, 20),
-            new THREE.Vector3(-45, 17, 26),
-            new THREE.Vector3(-60, 18, 32),
-            new THREE.Vector3(6, 22, 40),
-            new THREE.Vector3(10, 26, 60),
-            new THREE.Vector3(14, 30, 80),
-            // East Solar Island
-            new THREE.Vector3(70, 17, -15),
-            new THREE.Vector3(82, 17, -5),
-            new THREE.Vector3(75, 27, -10),
-            // West Lunar Island
-            new THREE.Vector3(-75, 13, 35),
-            new THREE.Vector3(-85, 13, 45),
-            new THREE.Vector3(-80, 23, 40),
-            // North Astral Island
-            new THREE.Vector3(10, 23, 90),
-            new THREE.Vector3(20, 23, 100),
-            new THREE.Vector3(15, 34, 95),
-            // High Sky Glider Orbit
-            new THREE.Vector3(0, 38, -30),
-            new THREE.Vector3(30, 42, 0),
-            new THREE.Vector3(0, 44, 30),
-            new THREE.Vector3(-30, 42, 0),
-            // Apex Rewards
-            new THREE.Vector3(8, 54, 8),
-            new THREE.Vector3(-8, 54, -8)
-        ];
-
-        const orbGeo = new THREE.OctahedronGeometry(0.7, 0);
-        const orbMat = new THREE.MeshStandardMaterial({
+        const geo = new THREE.OctahedronGeometry(1.1, 0);
+        const mat = new THREE.MeshStandardMaterial({
             color: 0x00f0ff,
             emissive: 0x00f0ff,
             emissiveIntensity: 1.8,
             roughness: 0.1
         });
+        const mesh = new THREE.Mesh(geo, mat);
+        group.add(mesh);
 
-        orbPoints.forEach((pt, idx) => {
-            const mesh = new THREE.Mesh(orbGeo, orbMat);
-            mesh.position.copy(pt);
-            this.scene.add(mesh);
+        // Surrounding orbital ring
+        const ringGeo = new THREE.TorusGeometry(1.8, 0.08, 8, 24);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        group.add(ring);
 
-            this.orbs.push({
-                id: idx,
-                originalPos: pt.clone(),
-                pos: pt.clone(),
-                mesh: mesh,
-                collected: false
-            });
+        this.scene.add(group);
+
+        this.relicKeys.push({
+            id: id,
+            pos: pos.clone(),
+            group: group,
+            mesh: mesh,
+            ring: ring,
+            collected: false
         });
     }
 
-    createFloatingClouds() {
-        // Volumetric low-poly cloud clusters on the horizon
-        for (let i = 0; i < 20; i++) {
-            const cloud = new THREE.Group();
-            const angle = (i / 20) * Math.PI * 2;
-            const dist = 220 + Math.random() * 80;
-            const y = 30 + (Math.random() - 0.5) * 50;
+    createSequenceGuide(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
 
-            cloud.position.set(Math.cos(angle) * dist, y, Math.sin(angle) * dist);
+        const monoGeo = new THREE.BoxGeometry(2.2, 5.0, 2.2);
+        const monoMesh = new THREE.Mesh(monoGeo, this.marbleMat);
+        monoMesh.castShadow = true;
+        group.add(monoMesh);
 
-            const puffs = 4 + Math.floor(Math.random() * 4);
-            const cloudMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                roughness: 0.9,
-                transparent: true,
-                opacity: 0.85
-            });
+        // Sequence Glyphs Display (3 small glowing orbs representing the combination)
+        const colors = [0x00f0ff, 0xa855f7, 0xffb800];
+        colors.forEach((col, idx) => {
+            const orbGeo = new THREE.SphereGeometry(0.35, 12, 12);
+            const orbMat = new THREE.MeshBasicMaterial({ color: col });
+            const orb = new THREE.Mesh(orbGeo, orbMat);
+            orb.position.set(0, 1.2 - idx * 0.9, 1.15);
+            group.add(orb);
+        });
 
-            for (let j = 0; j < puffs; j++) {
-                const puffGeo = new THREE.DodecahedronGeometry(8 + Math.random() * 10, 1);
-                const puff = new THREE.Mesh(puffGeo, cloudMat);
-                puff.position.set((j - puffs / 2) * 10, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 8);
-                cloud.add(puff);
-            }
-
-            this.scene.add(cloud);
-        }
+        this.scene.add(group);
     }
 
-    createPlatform(pos, size) {
-        const geo = new THREE.BoxGeometry(size.x, size.y, size.z);
-        const mesh = new THREE.Mesh(geo, this.marbleMat);
-        mesh.position.copy(pos);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        this.scene.add(mesh);
+    createSequencePillar(id, pos, colorHex, label) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const colGeo = new THREE.CylinderGeometry(1.2, 1.4, 4.5, 12);
+        const col = new THREE.Mesh(colGeo, this.marbleMat);
+        col.castShadow = true;
+        group.add(col);
+
+        // Glowing Core Crystal
+        const crystalGeo = new THREE.DodecahedronGeometry(0.9);
+        const crystalMat = new THREE.MeshStandardMaterial({
+            color: colorHex,
+            emissive: colorHex,
+            emissiveIntensity: 0.5,
+            roughness: 0.2
+        });
+        const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+        crystal.position.y = 3.2;
+        group.add(crystal);
+
+        this.scene.add(group);
+
+        this.sequencePillars.push({
+            id: id,
+            pos: pos.clone(),
+            group: group,
+            crystal: crystal,
+            colorHex: colorHex,
+            activated: false
+        });
+    }
+
+    createTimedPlate(id, pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // Base
+        const baseGeo = new THREE.CylinderGeometry(2.4, 2.6, 0.4, 16);
+        const base = new THREE.Mesh(baseGeo, this.marbleMat);
+        group.add(base);
+
+        // Kinetic Pressure Plate
+        const plateGeo = new THREE.CylinderGeometry(1.8, 1.8, 0.25, 16);
+        const plateMat = new THREE.MeshStandardMaterial({
+            color: 0x00f0ff,
+            emissive: 0x00f0ff,
+            emissiveIntensity: 0.4
+        });
+        const plate = new THREE.Mesh(plateGeo, plateMat);
+        plate.position.y = 0.25;
+        group.add(plate);
+
+        this.scene.add(group);
 
         this.registerPlatform(
-            new THREE.Vector3(pos.x - size.x / 2, pos.y - size.y / 2, pos.z - size.z / 2),
-            new THREE.Vector3(pos.x + size.x / 2, pos.y + size.y / 2, pos.z + size.z / 2),
-            mesh
+            new THREE.Vector3(pos.x - 2.4, pos.y - 0.2, pos.z - 2.4),
+            new THREE.Vector3(pos.x + 2.4, pos.y + 0.4, pos.z + 2.4),
+            base
         );
+
+        this.timedPlates.push({
+            id: id,
+            pos: pos.clone(),
+            plateMesh: plate,
+            activated: false
+        });
     }
 
-    createMovingPlatform(startPos, endPos, size, speed = 0.5) {
+    createApexSanctuary(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // Grand floating temple platform
+        const platGeo = new THREE.CylinderGeometry(20, 16, 3, 20);
+        const plat = new THREE.Mesh(platGeo, this.marbleMat);
+        plat.receiveShadow = true;
+        group.add(plat);
+
+        this.registerPlatform(
+            new THREE.Vector3(pos.x - 18, pos.y - 1.5, pos.z - 18),
+            new THREE.Vector3(pos.x + 18, pos.y + 1.5, pos.z + 18),
+            plat
+        );
+
+        // Celestial Core Sphere
+        const coreGeo = new THREE.IcosahedronGeometry(4.2, 2);
+        const coreMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0x00f0ff,
+            emissiveIntensity: 2.0,
+            roughness: 0.1
+        });
+        this.apexCore = new THREE.Mesh(coreGeo, coreMat);
+        this.apexCore.position.y = 6.5;
+        group.add(this.apexCore);
+
+        // Orbiting rings
+        const ringGeo = new THREE.TorusGeometry(8.0, 0.25, 12, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true });
+        this.apexRing = new THREE.Mesh(ringGeo, ringMat);
+        this.apexRing.position.y = 6.5;
+        group.add(this.apexRing);
+
+        this.scene.add(group);
+    }
+
+    createJumpPad(pos, power) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const baseGeo = new THREE.CylinderGeometry(2.4, 2.8, 0.5, 16);
+        const baseMesh = new THREE.Mesh(baseGeo, this.marbleMat);
+        group.add(baseMesh);
+
+        const plateGeo = new THREE.CylinderGeometry(1.8, 1.8, 0.35, 16);
+        const plateMat = new THREE.MeshStandardMaterial({
+            color: 0x00f0ff,
+            emissive: 0x00f0ff,
+            emissiveIntensity: 1.4
+        });
+        const plateMesh = new THREE.Mesh(plateGeo, plateMat);
+        plateMesh.position.y = 0.35;
+        group.add(plateMesh);
+
+        this.scene.add(group);
+
+        const padObj = {
+            pos: pos.clone(),
+            radius: 2.4,
+            power: power,
+            mesh: plateMesh
+        };
+        this.jumpPads.push(padObj);
+        return padObj;
+    }
+
+    createMovingPlatform(startPos, endPos, size, speed) {
         const geo = new THREE.BoxGeometry(size.x, size.y, size.z);
         const mesh = new THREE.Mesh(geo, this.marbleMat);
         mesh.position.copy(startPos);
@@ -680,21 +555,125 @@ class World {
             direction: 1,
             deltaPos: new THREE.Vector3(0, 0, 0),
             min: new THREE.Vector3(),
-            max: new THREE.Vector3()
+            max: new THREE.Vector3(),
+            isMoving: true
         };
 
         this.updatePlatformBounds(platObj);
         this.platforms.push(platObj);
         this.movingPlatforms.push(platObj);
+        return platObj;
+    }
+
+    createSpeedRing(pos, rotY) {
+        const geo = new THREE.TorusGeometry(3.5, 0.35, 12, 28);
+        const mat = new THREE.MeshStandardMaterial({
+            color: 0x00f0ff,
+            emissive: 0x00f0ff,
+            emissiveIntensity: 1.5,
+            roughness: 0.1
+        });
+        const ring = new THREE.Mesh(geo, mat);
+        ring.position.copy(pos);
+        ring.rotation.y = rotY;
+        this.scene.add(ring);
+
+        this.speedRings.push({ pos: pos, radius: 3.5, mesh: ring, cooldown: 0 });
+    }
+
+    createTempleRuins(centerPos) {
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2 + 0.4;
+            const x = centerPos.x + Math.cos(angle) * 16;
+            const z = centerPos.z + Math.sin(angle) * 16;
+
+            const colGeo = new THREE.CylinderGeometry(1.1, 1.3, 10, 12);
+            const col = new THREE.Mesh(colGeo, this.marbleMat);
+            col.position.set(x, centerPos.y + 6.5, z);
+            col.castShadow = true;
+            this.scene.add(col);
+
+            const capGeo = new THREE.BoxGeometry(2.8, 0.9, 2.8);
+            const cap = new THREE.Mesh(capGeo, this.marbleMat);
+            cap.position.set(x, centerPos.y + 11.5, z);
+            cap.castShadow = true;
+            this.scene.add(cap);
+
+            this.registerPlatform(
+                new THREE.Vector3(x - 1.4, centerPos.y + 11.0, z - 1.4),
+                new THREE.Vector3(x + 1.4, centerPos.y + 12.0, z + 1.4),
+                cap
+            );
+        }
+
+        const archGeo = new THREE.TorusGeometry(7, 1.1, 12, 24, Math.PI);
+        const arch = new THREE.Mesh(archGeo, this.marbleMat);
+        arch.position.set(centerPos.x, centerPos.y + 1.5, centerPos.z - 10);
+        this.scene.add(arch);
+    }
+
+    createOrbs() {
+        const orbPoints = [
+            // Level 1
+            new THREE.Vector3(0, 3.5, -4),
+            new THREE.Vector3(8, 3.5, 8),
+            new THREE.Vector3(-8, 3.5, 8),
+            new THREE.Vector3(12, 3.5, -12),
+            // Flight to Level 2
+            new THREE.Vector3(50, 12, 0),
+            new THREE.Vector3(68, 16, 0),
+            // Level 2
+            new THREE.Vector3(82, 17, -4),
+            new THREE.Vector3(96, 17, 6),
+            new THREE.Vector3(90, 22, -6),
+            // Flight to Level 3
+            new THREE.Vector3(130, 24, 0),
+            new THREE.Vector3(150, 27, 0),
+            // Level 3
+            new THREE.Vector3(180, 31, -8),
+            new THREE.Vector3(200, 31, 8),
+            new THREE.Vector3(190, 36, 0),
+            // Level 4 Summit
+            new THREE.Vector3(184, 82, 6),
+            new THREE.Vector3(196, 82, -6)
+        ];
+
+        const orbGeo = new THREE.OctahedronGeometry(0.65, 0);
+        const orbMat = new THREE.MeshStandardMaterial({
+            color: 0x00f0ff,
+            emissive: 0x00f0ff,
+            emissiveIntensity: 1.8,
+            roughness: 0.1
+        });
+
+        orbPoints.forEach((pt, idx) => {
+            const mesh = new THREE.Mesh(orbGeo, orbMat);
+            mesh.position.copy(pt);
+            this.scene.add(mesh);
+            this.orbs.push({ id: idx, originalPos: pt.clone(), pos: pt.clone(), mesh: mesh, collected: false });
+        });
+    }
+
+    createClouds() {
+        for (let i = 0; i < 16; i++) {
+            const cloud = new THREE.Group();
+            const angle = (i / 16) * Math.PI * 2;
+            const dist = 240 + Math.random() * 80;
+            const y = 35 + (Math.random() - 0.5) * 40;
+            cloud.position.set(Math.cos(angle) * dist, y, Math.sin(angle) * dist);
+
+            const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, transparent: true, opacity: 0.85 });
+            for (let j = 0; j < 5; j++) {
+                const puff = new THREE.Mesh(new THREE.DodecahedronGeometry(8 + Math.random() * 8, 1), cloudMat);
+                puff.position.set((j - 2) * 8, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 6);
+                cloud.add(puff);
+            }
+            this.scene.add(cloud);
+        }
     }
 
     registerPlatform(min, max, mesh) {
-        this.platforms.push({
-            min: min.clone(),
-            max: max.clone(),
-            mesh: mesh,
-            deltaPos: null
-        });
+        this.platforms.push({ min: min.clone(), max: max.clone(), mesh: mesh, deltaPos: null });
     }
 
     updatePlatformBounds(plat) {
@@ -702,60 +681,29 @@ class World {
         const halfX = plat.size.x / 2;
         const halfY = plat.size.y / 2;
         const halfZ = plat.size.z / 2;
-
         plat.min.set(pos.x - halfX, pos.y - halfY, pos.z - halfZ);
         plat.max.set(pos.x + halfX, pos.y + halfY, pos.z + halfZ);
     }
 
     initAmbientParticles() {
-        // Celestial glowing motes floating gently
-        const count = 350;
+        const count = 300;
         const geo = new THREE.BufferGeometry();
         const positions = new Float32Array(count * 3);
-
         for (let i = 0; i < count; i++) {
-            positions[i * 3] = (Math.random() - 0.5) * 350;
-            positions[i * 3 + 1] = 5 + Math.random() * 80;
+            positions[i * 3] = (Math.random() - 0.5) * 450;
+            positions[i * 3 + 1] = 5 + Math.random() * 90;
             positions[i * 3 + 2] = (Math.random() - 0.5) * 350;
         }
-
         geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-        const mat = new THREE.PointsMaterial({
-            color: 0x00f0ff,
-            size: 1.4,
-            transparent: true,
-            opacity: 0.7,
-            blending: THREE.AdditiveBlending
-        });
-
+        const mat = new THREE.PointsMaterial({ color: 0x00f0ff, size: 1.4, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending });
         this.ambientParticles = new THREE.Points(geo, mat);
         this.scene.add(this.ambientParticles);
-    }
-
-    // Transient Particle Effects
-    spawnJumpRing(pos) {
-        this.spawnExpandingRing(pos, 0x00f0ff, 0.8, 4.0);
-    }
-
-    spawnDoubleJumpBurst(pos) {
-        this.spawnExpandingRing(pos, 0xff007b, 1.2, 5.5);
-    }
-
-    spawnGroundPoundShockwave(pos) {
-        this.spawnExpandingRing(pos, 0xffffff, 2.0, 12.0);
     }
 
     spawnExpandingRing(pos, color, startRadius, maxRadius) {
         const geo = new THREE.RingGeometry(startRadius, startRadius + 0.3, 32);
         geo.rotateX(-Math.PI / 2);
-        const mat = new THREE.MeshBasicMaterial({
-            color: color,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.9,
-            blending: THREE.AdditiveBlending
-        });
+        const mat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
         const ring = new THREE.Mesh(geo, mat);
         ring.position.set(pos.x, pos.y + 0.1, pos.z);
         this.scene.add(ring);
@@ -773,103 +721,168 @@ class World {
         });
     }
 
+    spawnJumpRing(pos) { this.spawnExpandingRing(pos, 0x00f0ff, 0.8, 4.0); }
+    spawnDoubleJumpBurst(pos) { this.spawnExpandingRing(pos, 0xff007b, 1.2, 5.5); }
+    spawnGroundPoundShockwave(pos) { this.spawnExpandingRing(pos, 0xffffff, 2.0, 12.0); }
+
     spawnOrbCollectBurst(pos) {
-        const count = 16;
-        for (let i = 0; i < count; i++) {
-            const geo = new THREE.SphereGeometry(0.15, 6, 6);
-            const mat = new THREE.MeshBasicMaterial({
-                color: 0x00f0ff,
-                transparent: true,
-                opacity: 1.0,
-                blending: THREE.AdditiveBlending
-            });
-            const p = new THREE.Mesh(geo, mat);
+        for (let i = 0; i < 14; i++) {
+            const p = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6), new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending }));
             p.position.copy(pos);
             this.scene.add(p);
-
-            const vel = new THREE.Vector3(
-                (Math.random() - 0.5) * 12,
-                Math.random() * 10 + 2,
-                (Math.random() - 0.5) * 12
-            );
-
+            const vel = new THREE.Vector3((Math.random() - 0.5) * 10, Math.random() * 8 + 2, (Math.random() - 0.5) * 10);
             this.activeTransientParticles.push({
                 mesh: p,
                 vel: vel,
-                life: 0.6,
-                maxLife: 0.6,
+                life: 0.55,
+                maxLife: 0.55,
                 update: (dt, item) => {
                     item.mesh.position.addScaledVector(item.vel, dt);
-                    item.vel.y -= 15 * dt;
-                    const t = item.life / item.maxLife;
-                    item.mesh.material.opacity = t;
+                    item.vel.y -= 14 * dt;
+                    item.mesh.material.opacity = item.life / item.maxLife;
                 }
             });
         }
     }
 
-    update(dt, player, onOrbCollected, onBeaconActivated) {
+    update(dt, player, callbacks = {}) {
         const time = performance.now() * 0.001;
 
-        // 1. Update Moving Platforms
+        // 1. Moving Platforms
         for (let i = 0; i < this.movingPlatforms.length; i++) {
             const p = this.movingPlatforms[i];
             const oldPos = p.mesh.position.clone();
 
             p.progress += dt * p.speed * p.direction;
-            if (p.progress >= 1.0) {
-                p.progress = 1.0;
-                p.direction = -1;
-            } else if (p.progress <= 0) {
-                p.progress = 0;
-                p.direction = 1;
-            }
+            if (p.progress >= 1.0) { p.progress = 1.0; p.direction = -1; }
+            else if (p.progress <= 0) { p.progress = 0; p.direction = 1; }
 
-            // Smooth ease in/out
             const smoothT = 0.5 - 0.5 * Math.cos(p.progress * Math.PI);
             p.mesh.position.lerpVectors(p.startPos, p.endPos, smoothT);
-
             p.deltaPos.subVectors(p.mesh.position, oldPos);
             this.updatePlatformBounds(p);
         }
 
-        // 2. Update Beacons & check player interaction
-        for (let i = 0; i < this.beacons.length; i++) {
-            const b = this.beacons[i];
-            if (b.crystalMesh) {
-                b.crystalMesh.rotation.y += dt * (b.activated ? 2.5 : 0.8);
-                b.crystalMesh.position.y = 5.5 + Math.sin(time * 2 + i) * 0.35;
+        // 2. PUZZLE 1: Relic Keys & Altar Pad
+        for (let i = 0; i < this.relicKeys.length; i++) {
+            const r = this.relicKeys[i];
+            if (!r.collected) {
+                r.mesh.rotation.y += dt * 2.5;
+                r.ring.rotation.z += dt * 1.5;
+                if (player.position.distanceTo(r.pos) < 2.0) {
+                    r.collected = true;
+                    r.group.visible = false;
+                    this.relicsCollected++;
+                    window.audioManager.playKeyCollect();
+                    this.spawnOrbCollectBurst(r.pos);
+                    if (callbacks.onRelicCollected) callbacks.onRelicCollected(this.relicsCollected, 3);
+                }
             }
-            if (b.ringMesh) {
-                b.ringMesh.rotation.z += dt * (b.activated ? 3.0 : 1.0);
+        }
+
+        // Altar Pad check
+        if (this.altarPad && !this.altarPad.activated) {
+            if (this.relicsCollected >= 3 && player.position.distanceTo(this.altarPad.pos) < 3.2 && player.isGrounded) {
+                this.altarPad.activated = true;
+                this.altarPad.mesh.material.emissiveIntensity = 2.5;
+                this.dissolveGate(this.gate1);
+                this.currentLevel = 2;
+                if (callbacks.onLevelAdvanced) callbacks.onLevelAdvanced(2, "Nivell 2: Les Agulles de Cristall");
             }
+        }
 
-            // Beacon activation check: player stands on beacon pad
-            if (!b.activated) {
-                const distToPad = player.position.distanceTo(b.pos);
-                if (distToPad < 4.0 && player.isGrounded) {
-                    b.activated = true;
-                    b.beamMesh.material.opacity = 0.75;
-                    b.crystalMesh.material.emissiveIntensity = 2.5;
-                    window.audioManager.playBeaconActivate();
-                    this.spawnExpandingRing(b.pos, b.color, 2.0, 16.0);
-                    if (onBeaconActivated) onBeaconActivated(b);
+        // 3. PUZZLE 2: Sequence Pillars
+        if (this.currentLevel >= 2 && this.gate2 && this.gate2.active) {
+            for (let i = 0; i < this.sequencePillars.length; i++) {
+                const sp = this.sequencePillars[i];
+                sp.crystal.rotation.y += dt * 2.0;
 
-                    // Check if all 3 beacons activated!
-                    if (this.beacons.every(beacon => beacon.activated)) {
-                        this.unlockApex();
+                const dist = player.position.distanceTo(sp.pos);
+                if (dist < 2.8 && !sp.activated) {
+                    const expectedId = this.sequenceTarget[this.sequenceCurrentStep];
+                    if (sp.id === expectedId) {
+                        // Correct touch!
+                        sp.activated = true;
+                        sp.crystal.material.emissiveIntensity = 3.0;
+                        this.sequenceCurrentStep++;
+                        window.audioManager.playRuneTouch(true);
+                        this.spawnExpandingRing(sp.pos, sp.colorHex, 1.0, 6.0);
+
+                        if (this.sequenceCurrentStep >= this.sequenceTarget.length) {
+                            // Puzzle 2 solved!
+                            this.dissolveGate(this.gate2);
+                            this.currentLevel = 3;
+                            if (callbacks.onLevelAdvanced) callbacks.onLevelAdvanced(3, "Nivell 3: La Farga Temporal");
+                        } else {
+                            if (callbacks.onSequenceStep) callbacks.onSequenceStep(this.sequenceCurrentStep, 3);
+                        }
+                    } else {
+                        // Wrong pillar! Reset puzzle
+                        window.audioManager.playRuneTouch(false);
+                        this.sequenceCurrentStep = 0;
+                        this.sequencePillars.forEach(p => {
+                            p.activated = false;
+                            p.crystal.material.emissiveIntensity = 0.5;
+                        });
+                        if (callbacks.onSequenceFail) callbacks.onSequenceFail();
                     }
                 }
             }
         }
 
-        // 3. Update Apex Core
-        if (this.apexCore) {
-            this.apexCore.rotation.x += dt * 0.4;
-            this.apexCore.rotation.y += dt * 0.6;
+        // 4. PUZZLE 3: Timed Pressure Plates
+        if (this.currentLevel >= 3 && this.gate3 && this.gate3.active) {
+            // Check plate steps
+            for (let i = 0; i < this.timedPlates.length; i++) {
+                const tp = this.timedPlates[i];
+                if (!tp.activated && player.position.distanceTo(tp.pos) < 2.2 && player.isGrounded) {
+                    tp.activated = true;
+                    tp.plateMesh.position.y = 0.08; // Physical depress
+                    tp.plateMesh.material.emissiveIntensity = 2.5;
+                    window.audioManager.playRuneTouch(true);
+
+                    // Start timer if not already active
+                    if (!this.timerActive) {
+                        this.timerActive = true;
+                        this.timerRemaining = this.timerSeconds;
+                    }
+
+                    // Check if all 3 plates active
+                    const allActive = this.timedPlates.every(p => p.activated);
+                    if (allActive) {
+                        this.timerActive = false;
+                        this.dissolveGate(this.gate3);
+                        this.currentLevel = 4;
+                        if (callbacks.onLevelAdvanced) callbacks.onLevelAdvanced(4, "Nivell 4: L'Àpex Suprem");
+                    }
+                }
+            }
+
+            // Countdown timer ticking
+            if (this.timerActive) {
+                this.timerRemaining -= dt;
+                if (callbacks.onTimerUpdate) callbacks.onTimerUpdate(Math.ceil(this.timerRemaining));
+
+                if (Math.floor(this.timerRemaining) !== Math.floor(this.timerRemaining + dt)) {
+                    window.audioManager.playTimerTick();
+                }
+
+                if (this.timerRemaining <= 0) {
+                    // Time out! Reset plates
+                    this.timerActive = false;
+                    this.timerRemaining = this.timerSeconds;
+                    this.timedPlates.forEach(p => {
+                        p.activated = false;
+                        p.plateMesh.position.y = 0.25;
+                        p.plateMesh.material.emissiveIntensity = 0.4;
+                    });
+                    window.audioManager.playRuneTouch(false);
+                    if (callbacks.onTimerExpired) callbacks.onTimerExpired();
+                }
+            }
         }
 
-        // 4. Update Jump Pads
+        // 5. Jump Pads
         for (let i = 0; i < this.jumpPads.length; i++) {
             const pad = this.jumpPads[i];
             const dist = player.position.distanceTo(pad.pos);
@@ -881,14 +894,12 @@ class World {
             }
         }
 
-        // 5. Update Speed Boost Rings
+        // 6. Speed Rings
         for (let i = 0; i < this.speedRings.length; i++) {
             const ring = this.speedRings[i];
             if (ring.cooldown > 0) ring.cooldown -= dt;
-            const dist = player.position.distanceTo(ring.pos);
-            if (dist < ring.radius && ring.cooldown <= 0) {
+            if (player.position.distanceTo(ring.pos) < ring.radius && ring.cooldown <= 0) {
                 ring.cooldown = 2.0;
-                // Boost forward in character's rotation direction
                 const forward = new THREE.Vector3(Math.sin(player.targetRotation), 0.2, Math.cos(player.targetRotation)).normalize();
                 player.velocity.x = forward.x * 35;
                 player.velocity.z = forward.z * 35;
@@ -898,37 +909,44 @@ class World {
             }
         }
 
-        // 6. Update Light Orbs (Floating, Magnetic Pull & Collection)
+        // 7. Apex Core & Victory Check
+        if (this.apexCore) {
+            this.apexCore.rotation.x += dt * 0.4;
+            this.apexCore.rotation.y += dt * 0.6;
+            this.apexRing.rotation.z += dt * 0.8;
+
+            if (this.currentLevel >= 4 && !this.apexReached) {
+                if (player.position.distanceTo(this.apexPos) < 16.0 && player.position.y >= this.apexPos.y - 1.0) {
+                    this.apexReached = true;
+                    if (callbacks.onVictory) callbacks.onVictory();
+                }
+            }
+        }
+
+        // 8. Collectible Orbs
         for (let i = 0; i < this.orbs.length; i++) {
             const orb = this.orbs[i];
             if (orb.collected) continue;
 
-            // Idle floating bob
             orb.mesh.rotation.y += dt * 2.0;
-            orb.pos.y = orb.originalPos.y + Math.sin(time * 3 + orb.id) * 0.4;
+            orb.pos.y = orb.originalPos.y + Math.sin(time * 3 + orb.id) * 0.35;
             orb.mesh.position.y = orb.pos.y;
 
-            // Distance to player
             const dist = player.position.distanceTo(orb.mesh.position);
-
-            // Magnetic attraction within 7 units
-            if (dist < 7.0) {
+            if (dist < 6.5) {
                 const dir = new THREE.Vector3().subVectors(player.position, orb.mesh.position).normalize();
-                const pullSpeed = (7.0 - dist) * 7.0;
-                orb.mesh.position.addScaledVector(dir, pullSpeed * dt);
+                orb.mesh.position.addScaledVector(dir, (6.5 - dist) * 7.0 * dt);
             }
-
-            // Collection trigger within 1.4 units
             if (dist < 1.4) {
                 orb.collected = true;
                 orb.mesh.visible = false;
                 window.audioManager.playOrbCollect();
                 this.spawnOrbCollectBurst(orb.mesh.position);
-                if (onOrbCollected) onOrbCollected(orb);
+                if (callbacks.onOrbCollected) callbacks.onOrbCollected(orb);
             }
         }
 
-        // 7. Update Transient Particles
+        // 9. Transient Particles
         for (let i = this.activeTransientParticles.length - 1; i >= 0; i--) {
             const p = this.activeTransientParticles[i];
             p.life -= dt;
@@ -941,10 +959,7 @@ class World {
             }
         }
 
-        // 8. Gentle Ambient Dust Motation
-        if (this.ambientParticles) {
-            this.ambientParticles.rotation.y += dt * 0.02;
-        }
+        if (this.ambientParticles) this.ambientParticles.rotation.y += dt * 0.02;
     }
 }
 

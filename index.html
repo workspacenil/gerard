@@ -30,8 +30,9 @@
                     </div>
                 </div>
                 <div class="objective-box">
-                    <span class="objective-tag">Missió</span>
-                    <span class="objective-text">Activa els 3 Fars Celestials i ascendeix a l'Àpex</span>
+                    <span class="objective-tag" id="objective-tag">Nivell 1</span>
+                    <span class="objective-text" id="objective-text">Troba els 3 Cristalls Rúnics i activa l'Altar</span>
+                    <span class="timer-badge hidden" id="puzzle-timer">⏱️ 35s</span>
                 </div>
             </div>
 
@@ -44,20 +45,21 @@
                         <div class="stat-icon orbs">✦</div>
                         <div class="stat-data">
                             <span class="stat-label">Orbes de Llum</span>
-                            <span class="stat-value" id="stat-orbs">0 / 30</span>
+                            <span class="stat-value" id="stat-orbs">0 / 25</span>
                         </div>
                     </div>
 
-                    <!-- Beacons Stat -->
+                    <!-- Level Progress Stat -->
                     <div class="stat-badge">
-                        <div class="stat-icon beacons">☀️</div>
+                        <div class="stat-icon beacons" id="stat-level-icon">🧩</div>
                         <div class="stat-data">
-                            <span class="stat-label">Fars Celestials</span>
-                            <span class="stat-value" id="stat-beacons">0 / 3</span>
+                            <span class="stat-label">Nivell Actual</span>
+                            <span class="stat-value" id="stat-level">1 / 4</span>
                             <div class="beacons-indicators">
-                                <div class="beacon-dot" id="beacon-dot-solar" title="Far Solar"></div>
-                                <div class="beacon-dot" id="beacon-dot-lunar" title="Far Lunar"></div>
-                                <div class="beacon-dot" id="beacon-dot-astral" title="Far Astral"></div>
+                                <div class="beacon-dot active" id="level-dot-1" title="Nivell 1: Despertar"></div>
+                                <div class="beacon-dot" id="level-dot-2" title="Nivell 2: Seqüència"></div>
+                                <div class="beacon-dot" id="level-dot-3" title="Nivell 3: Farga Temporal"></div>
+                                <div class="beacon-dot" id="level-dot-4" title="Nivell 4: Àpex Suprem"></div>
                             </div>
                         </div>
                     </div>
@@ -74,12 +76,12 @@
         <!-- Center Bottom: Player Dynamic Abilities & Stamina -->
         <div class="player-status-center">
             <!-- Glider & Dash Notification Pills -->
-            <div class="state-pill gliding" id="pill-gliding">🪂 Planador Actiu</div>
-            <div class="state-pill dashing" id="pill-dashing">⚡ Impuls Dash!</div>
+            <div class="state-pill gliding" id="pill-gliding">🦅 Ales de Vol Actives</div>
+            <div class="state-pill dashing" id="pill-dashing">🔥 Turbo Foc Reactiu!</div>
 
             <!-- Dash Energy Bar -->
             <div class="stamina-meter-wrapper">
-                <span class="meter-label">Recàrrega Dash [E / Clic Dret]</span>
+                <span class="meter-label">Propulsor de Foc [E / Clic Dret]</span>
                 <div class="stamina-meter">
                     <div id="dash-bar"></div>
                 </div>
@@ -98,10 +100,10 @@
                     <span class="key">ESPAI</span> Saltar / Doble Salt
                 </div>
                 <div class="control-item">
-                    <span class="key">Mantenir ESPAI</span> 🪂 Activar Planador en l'aire
+                    <span class="key">Mantenir ESPAI</span> 🦅 Ales de Vol en l'aire
                 </div>
                 <div class="control-item">
-                    <span class="key">E / Clic Dret</span> ⚡ Impuls Dash sònic
+                    <span class="key">E / Clic Dret</span> 🔥 Turbo Foc Reactiu
                 </div>
                 <div class="control-item">
                     <span class="key">C / Ctrl</span> ⬇ Impacte Terra (Ground Pound)
@@ -137,8 +139,8 @@
         <!-- Touch Action Buttons -->
         <div id="touch-actions">
             <button class="touch-btn pound-btn" id="btn-touch-pound" aria-label="Ground Pound">💥</button>
-            <button class="touch-btn dash-btn" id="btn-touch-dash" aria-label="Dash">⚡</button>
-            <button class="touch-btn jump-btn" id="btn-touch-jump" aria-label="Salt o Planar">🚀</button>
+            <button class="touch-btn dash-btn" id="btn-touch-dash" aria-label="Turbo Foc">🔥</button>
+            <button class="touch-btn jump-btn" id="btn-touch-jump" aria-label="Salt o Ales">🦅</button>
         </div>
     </div>
 
@@ -171,19 +173,21 @@
             <div class="modal-icon">🌌</div>
             <h1 class="modal-title">Aetèria: El Santuari Celeste</h1>
             <p class="modal-desc">
-                Un joc d'acció, plataformes 3D i exploració aèria d'alt rendiment creat des de zero amb WebGL & Three.js.<br>
-                Física cinètica fluida, planador amb ales d'energia, plataformes mòbils, so procedural en temps real i il·luminació dinàmica.
+                Aventura 3D de plataformes i puzles progressius a través de 4 illes celestials.<br>
+                Per obrir les portes de cada nivell hauràs de resoldre puzles i buscar relíquies amb dificultat creixent!
             </p>
 
             <div class="controls-grid">
                 <div><span class="key">W A S D</span> Moviment 3D</div>
-                <div><span class="key">Ratolí</span> Control lliure de càmera</div>
-                <div><span class="key">Espai</span> Saltar & Doble salt acrobàtic</div>
-                <div><span class="key">Mantenir Espai</span> 🪂 <strong>Planador Celeste</strong></div>
-                <div><span class="key">E / Clic Dret</span> ⚡ <strong>Dash ultrasònic</strong></div>
+                <div><span class="key">Ratolí / Swipe</span> Gir de càmera 360°</div>
+                <div><span class="key">Espai</span> Salt & Doble salt (amb balit)</div>
+                <div><span class="key">Mantenir Espai</span> 🦅 <strong>Ales de Vol Dinàmiques</strong></div>
+                <div><span class="key">E / Clic Dret</span> 🔥 <strong>Turbo Foc Reactiu</strong></div>
                 <div><span class="key">C / Ctrl</span> 💥 <strong>Ground Pound</strong></div>
-                <div><span class="key">R</span> Respawn a punt de control</div>
-                <div><span class="key">T</span> Cicle ambiental (Alba, Dia, Posta, Nit)</div>
+                <div><span class="key">Nivell 1</span> 🔑 <strong>Troba 3 Cristalls</strong></div>
+                <div><span class="key">Nivell 2</span> 🔮 <strong>Seqüència de Runes</strong></div>
+                <div><span class="key">Nivell 3</span> ⏱️ <strong>Plaques Cronometrades</strong></div>
+                <div><span class="key">Nivell 4</span> 🏆 <strong>Santuari de l'Àpex</strong></div>
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
@@ -257,6 +261,8 @@
 
     <!-- Scripts: Local Three.js with fallback, Audio, Player, World, Game -->
     <script src="libs/three.min.js"></script>
+    <script src="libs/GLTFLoader.js"></script>
+    <script src="libs/OBJLoader.js"></script>
     <script>
         // Fallback to CDN if local file fails for any unexpected reason
         if (typeof THREE === 'undefined') {

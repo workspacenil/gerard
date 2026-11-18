@@ -26,6 +26,27 @@ Pots jugar directament obrint el navegador del teu telèfon (Chrome, Safari, Fir
 
 ---
 
+## 🧩 Sistema de Nivells Progressius & Puzles
+
+Per desbloquejar el pas cap a cada nova illa, hauràs de resoldre puzles de dificultat creixent:
+
+1. **Nivell 1: El Despertar Rúnic**
+   * **Repte:** Troba els **3 Cristalls Rúnics d'Energia** amagats per l'illa i trepitja l'**Altar** central.
+   * **Desbloqueig:** La Barrera de Força 1 es dissol i activa el propulsor cap al Nivell 2.
+
+2. **Nivell 2: Les Agulles de Cristall**
+   * **Repte:** **Puzle de Seqüència Lumínica**. El monòlit guia indica l'ordre requerit (1: Ciano ➔ 2: Astral ➔ 3: Solar). Toca els 3 pilars en l'ordre exacte.
+   * **Desbloqueig:** La Barrera 2 es dissol i s'activen les plataformes mòbils (sense solapament) per creuar el buit.
+
+3. **Nivell 3: La Farga Temporal**
+   * **Repte:** **Puzle de Pressió Cronometrat**. Activa les 3 plaques d'energia en diferents plataformes satèl·lit en menys de 35 segons usant l'esprint, el Dash sònic i el planador!
+   * **Desbloqueig:** S'obre la Barrera de l'Àpex i s'activa el Super-Vòrtex vertical de llançament.
+
+4. **Nivell 4: El Santuari de l'Àpex**
+   * **Repte:** Ascendeix a l'estratòsfera i corona el Nucli Celestial per completar la gesta!
+
+---
+
 ## 💻 Controls en Ordinador (PC / Mac)
 
 * **W, A, S, D / Fletxes:** Moure's

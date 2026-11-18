@@ -237,30 +237,104 @@ class AudioManager {
     }
 
     // Sound Effect: Air Dash
+    // Sound Effect: Air Dash / Fiery Rocket Burst
     playDash() {
         if (!this.ctx || this.isMuted) return;
         const now = this.ctx.currentTime;
 
-        // Bass sweep
+        // Fiery noise burst (thruster roar)
+        const bufferSize = this.ctx.sampleRate * 0.45;
+        const noiseBuf = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = noiseBuf.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.25));
+        }
+        const noiseSrc = this.ctx.createBufferSource();
+        noiseSrc.buffer = noiseBuf;
+
+        const noiseFilter = this.ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(350, now);
+        noiseFilter.frequency.exponentialRampToValueAtTime(140, now + 0.45);
+        noiseFilter.Q.value = 1.8;
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.55, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        noiseSrc.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.sfxGain);
+        noiseSrc.start(now);
+
+        // Bass punch / jet sweep
         const osc = this.ctx.createOscillator();
         const oscGain = this.ctx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(280, now);
-        osc.frequency.exponentialRampToValueAtTime(45, now + 0.35);
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(600, now);
+        filter.frequency.setValueAtTime(800, now);
 
-        oscGain.gain.setValueAtTime(0.4, now);
-        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        oscGain.gain.setValueAtTime(0.45, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
         osc.connect(filter);
         filter.connect(oscGain);
         oscGain.connect(this.sfxGain);
 
         osc.start(now);
-        osc.stop(now + 0.36);
+        osc.stop(now + 0.42);
+
+        // 35% chance to bleat in excitement during rocket boost!
+        if (Math.random() < 0.45) {
+            this.playGoatBleat(0.08);
+        }
+    }
+
+    // Sound Effect: Goat Bleat ("Baaaaa / Meeeee!")
+    playGoatBleat(delay = 0) {
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime + delay;
+
+        // Carrier oscillator
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        const baseFreq = 240 + Math.random() * 40;
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.linearRampToValueAtTime(baseFreq * 1.08, now + 0.15);
+        osc.frequency.linearRampToValueAtTime(baseFreq * 0.92, now + 0.45);
+
+        // Tremolo / vibrato LFO (giving the classic goat bleat wobble)
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        lfo.type = 'sine';
+        lfo.frequency.setValueAtTime(9.5, now); // ~9.5 Hz wobble
+        lfoGain.gain.setValueAtTime(baseFreq * 0.12, now);
+        lfo.connect(osc.frequency);
+
+        // Vowel formant bandpass filters (simulating animal vocal tract)
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(850, now);
+        filter.Q.value = 3.5;
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+        gain.gain.setValueAtTime(0.28, now + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+
+        lfo.start(now);
+        osc.start(now);
+        lfo.stop(now + 0.5);
+        osc.stop(now + 0.5);
     }
 
     // Sound Effect: Glider Deploy
@@ -414,6 +488,122 @@ class AudioManager {
 
         osc.start(now);
         osc.stop(now + 0.48);
+    }
+
+    // Puzzle Sound: Key / Relic Collected
+    playKeyCollect() {
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const t = now + idx * 0.05;
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, t);
+
+            gain.gain.setValueAtTime(0.3, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+
+            osc.start(t);
+            osc.stop(t + 0.36);
+        });
+    }
+
+    // Puzzle Sound: Rune Sequence Touch
+    playRuneTouch(isCorrect) {
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        if (isCorrect) {
+            // Ascending harmonious chord
+            [440, 554.37, 659.25].forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const t = now + idx * 0.06;
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, t);
+
+                gain.gain.setValueAtTime(0.28, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+
+                osc.connect(gain);
+                gain.connect(this.sfxGain);
+
+                osc.start(t);
+                osc.stop(t + 0.42);
+            });
+        } else {
+            // Error buzz
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.linearRampToValueAtTime(90, now + 0.3);
+
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+
+            osc.start(now);
+            osc.stop(now + 0.35);
+        }
+    }
+
+    // Puzzle Sound: Gate / Barrier Dissolve
+    playGateDissolve() {
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        [220, 330, 440, 660, 880].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const filter = this.ctx.createBiquadFilter();
+            const t = now + idx * 0.08;
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(300, t);
+            filter.frequency.exponentialRampToValueAtTime(3500, t + 0.8);
+
+            gain.gain.setValueAtTime(0.001, t);
+            gain.gain.exponentialRampToValueAtTime(0.3 / 5, t + 0.15);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.sfxGain);
+
+            osc.start(t);
+            osc.stop(t + 1.3);
+        });
+    }
+
+    // Puzzle Sound: Countdown Ticking
+    playTimerTick() {
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(980, now);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        osc.start(now);
+        osc.stop(now + 0.05);
     }
 
     // Footstep tick
