@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AETHERIA: El Santuari Celeste (3D Game Experience)</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>">
+</head>
+<body>
+    <!-- 3D Canvas Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- Dynamic Reticle -->
+    <div id="crosshair"></div>
+
+    <!-- Notification Toasts -->
+    <div id="toast-container"></div>
+
+    <!-- Heads-Up Display (HUD) -->
+    <div id="ui-container">
+        <!-- Top Bar: Title, Objective, Radar & Stats -->
+        <div class="top-bar">
+            <!-- Brand & Objective -->
+            <div class="hud-glass">
+                <div class="game-brand">
+                    <div>
+                        <div class="game-title">Aetèria</div>
+                        <div class="game-subtitle">El Santuari Celeste 3D</div>
+                    </div>
+                </div>
+                <div class="objective-box">
+                    <span class="objective-tag">Missió</span>
+                    <span class="objective-text">Activa els 3 Fars Celestials i ascendeix a l'Àpex</span>
+                </div>
+            </div>
+
+            <!-- Stats & Radar -->
+            <div class="top-right-group">
+                <!-- Counters -->
+                <div class="hud-glass stats-column">
+                    <!-- Orbs Stat -->
+                    <div class="stat-badge">
+                        <div class="stat-icon orbs">✦</div>
+                        <div class="stat-data">
+                            <span class="stat-label">Orbes de Llum</span>
+                            <span class="stat-value" id="stat-orbs">0 / 30</span>
+                        </div>
+                    </div>
+
+                    <!-- Beacons Stat -->
+                    <div class="stat-badge">
+                        <div class="stat-icon beacons">☀️</div>
+                        <div class="stat-data">
+                            <span class="stat-label">Fars Celestials</span>
+                            <span class="stat-value" id="stat-beacons">0 / 3</span>
+                            <div class="beacons-indicators">
+                                <div class="beacon-dot" id="beacon-dot-solar" title="Far Solar"></div>
+                                <div class="beacon-dot" id="beacon-dot-lunar" title="Far Lunar"></div>
+                                <div class="beacon-dot" id="beacon-dot-astral" title="Far Astral"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Minimap Radar -->
+                <div class="hud-glass radar-box">
+                    <div class="radar-header">Radar Tàctic</div>
+                    <canvas id="radar-canvas" width="120" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Bottom: Player Dynamic Abilities & Stamina -->
+        <div class="player-status-center">
+            <!-- Glider & Dash Notification Pills -->
+            <div class="state-pill gliding" id="pill-gliding">🪂 Planador Actiu</div>
+            <div class="state-pill dashing" id="pill-dashing">⚡ Impuls Dash!</div>
+
+            <!-- Dash Energy Bar -->
+            <div class="stamina-meter-wrapper">
+                <span class="meter-label">Recàrrega Dash [E / Clic Dret]</span>
+                <div class="stamina-meter">
+                    <div id="dash-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar: Controls, Speedometer & Quick Actions -->
+        <div class="bottom-bar">
+            <!-- Controls Hint -->
+            <div class="hud-glass controls-hint">
+                <div class="control-item">
+                    <span class="key">W A S D</span> Moure's
+                    <span class="key" style="margin-left: 8px;">SHIFT</span> Esprintar
+                </div>
+                <div class="control-item">
+                    <span class="key">ESPAI</span> Saltar / Doble Salt
+                </div>
+                <div class="control-item">
+                    <span class="key">Mantenir ESPAI</span> 🪂 Activar Planador en l'aire
+                </div>
+                <div class="control-item">
+                    <span class="key">E / Clic Dret</span> ⚡ Impuls Dash sònic
+                </div>
+                <div class="control-item">
+                    <span class="key">C / Ctrl</span> ⬇ Impacte Terra (Ground Pound)
+                </div>
+            </div>
+
+            <!-- Bottom Right Controls Group -->
+            <div class="bottom-right-group">
+                <!-- Speedometer -->
+                <div class="speed-gauge">
+                    <span class="speed-number" id="speed-val">0</span>
+                    <span class="speed-unit">KM/H</span>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div class="quick-actions">
+                    <button class="action-btn" id="btn-mobile" title="Jugar des del mòbil">📱 Mòbil</button>
+                    <button class="action-btn" id="btn-time" title="Canvia l'hora del dia">☀ Ambient [T]</button>
+                    <button class="action-btn" id="btn-audio" title="Activa / Silencia el so">🔊 So [M]</button>
+                    <button class="action-btn" id="btn-help" title="Mostra ajuda de controls">❓ Ajuda [H]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile On-Screen Touch Controls (Shown automatically on touch devices) -->
+    <div id="touch-controls">
+        <!-- Floating Dynamic Joystick Container -->
+        <div id="joystick-base">
+            <div id="joystick-knob"></div>
+        </div>
+
+        <!-- Touch Action Buttons -->
+        <div id="touch-actions">
+            <button class="touch-btn pound-btn" id="btn-touch-pound" aria-label="Ground Pound">💥</button>
+            <button class="touch-btn dash-btn" id="btn-touch-dash" aria-label="Dash">⚡</button>
+            <button class="touch-btn jump-btn" id="btn-touch-jump" aria-label="Salt o Planar">🚀</button>
+        </div>
+    </div>
+
+    <!-- Mobile QR Connection Modal -->
+    <div class="overlay-screen hidden" id="mobile-modal">
+        <div class="modal-card">
+            <div class="modal-icon">📱</div>
+            <h2 class="modal-title">Jugar des del Mòbil</h2>
+            <p class="modal-desc">
+                Escaneja aquest codi amb la càmera del mòbil per jugar immediatament. Requeriment: el mòbil ha d'estar connectat a la <strong>mateixa xarxa Wi-Fi</strong>.
+            </p>
+
+            <div style="background: #ffffff; padding: 14px; border-radius: 16px; display: inline-block; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                <img src="qrcode.png" alt="Codi QR per a mòbil" style="width: 190px; height: 190px; display: block;">
+            </div>
+
+            <div style="font-size: 16px; font-weight: 800; color: #00f0ff; letter-spacing: 1px; margin-bottom: 22px; font-family: monospace; background: rgba(0,240,255,0.1); padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(0,240,255,0.3); display: inline-block;">
+                http://192.168.18.250:8000
+            </div>
+
+            <div>
+                <button class="cta-button" id="close-mobile-btn">Tancar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Screen Overlay -->
+    <div class="overlay-screen" id="start-screen">
+        <div class="modal-card">
+            <div class="modal-icon">🌌</div>
+            <h1 class="modal-title">Aetèria: El Santuari Celeste</h1>
+            <p class="modal-desc">
+                Un joc d'acció, plataformes 3D i exploració aèria d'alt rendiment creat des de zero amb WebGL & Three.js.<br>
+                Física cinètica fluida, planador amb ales d'energia, plataformes mòbils, so procedural en temps real i il·luminació dinàmica.
+            </p>
+
+            <div class="controls-grid">
+                <div><span class="key">W A S D</span> Moviment 3D</div>
+                <div><span class="key">Ratolí</span> Control lliure de càmera</div>
+                <div><span class="key">Espai</span> Saltar & Doble salt acrobàtic</div>
+                <div><span class="key">Mantenir Espai</span> 🪂 <strong>Planador Celeste</strong></div>
+                <div><span class="key">E / Clic Dret</span> ⚡ <strong>Dash ultrasònic</strong></div>
+                <div><span class="key">C / Ctrl</span> 💥 <strong>Ground Pound</strong></div>
+                <div><span class="key">R</span> Respawn a punt de control</div>
+                <div><span class="key">T</span> Cicle ambiental (Alba, Dia, Posta, Nit)</div>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <button class="cta-button" id="start-btn">
+                    <span>Començar Aventura 3D</span>
+                    <span>➔</span>
+                </button>
+                <button class="cta-button" id="start-mobile-btn" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(0,240,255,0.4);">
+                    <span>📱 Obrir al Mòbil</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal Overlay -->
+    <div class="overlay-screen hidden" id="help-modal">
+        <div class="modal-card">
+            <div class="modal-icon">🎮</div>
+            <h2 class="modal-title">Guia de Control & Habilitats</h2>
+            <p class="modal-desc">Domina els moviments cinètics per creuar l'arxipèlag flotant:</p>
+
+            <div class="controls-grid">
+                <div><span class="key">W A S D</span> Córrer en totes direccions</div>
+                <div><span class="key">Shift</span> Esprint d'alta velocitat</div>
+                <div><span class="key">Espai x2</span> Doble salt acrobàtic amb ona de xoc</div>
+                <div><span class="key">Planador</span> Mantén espai en l'aire per planar</div>
+                <div><span class="key">Bolets de Salt</span> Trepitja'ls per sortir disparat</div>
+                <div><span class="key">Anells de Turbo</span> Vola a través per guanyar impuls</div>
+                <div><span class="key">Fars Celestials</span> Posa't a la placa per activar-los</div>
+                <div><span class="key">Plataformes</span> Les plataformes mòbils et transporten</div>
+            </div>
+
+            <button class="cta-button" id="close-help-btn">Tornar al Joc</button>
+        </div>
+    </div>
+
+    <!-- Victory Screen Overlay -->
+    <div class="overlay-screen hidden" id="victory-screen">
+        <div class="modal-card">
+            <div class="modal-icon">🏆</div>
+            <h1 class="modal-title">Missió Complerta!</h1>
+            <p class="modal-desc">
+                Has despertat els 3 Fars Celestials i has coronat el Santuari de l'Àpex! El flux d'energia d'Aetèria ha estat restaurat.
+            </p>
+
+            <div class="controls-grid" style="text-align: center;">
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Temps Total</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #00f0ff;" id="victory-time">0:00</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Orbes Recollits</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #ff007b;" id="victory-orbs">0 / 30</div>
+                </div>
+                <div style="grid-column: span 2;">
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Rànquing de Mestratge</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #ffb800;" id="victory-rating">⭐⭐⭐ Mestre Celestial</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 14px; justify-content: center;">
+                <button class="cta-button" id="victory-continue-btn" style="background: rgba(255,255,255,0.15); border: 1px solid #fff;">
+                    Exploració Lliure
+                </button>
+                <button class="cta-button" id="victory-restart-btn">
+                    Reiniciar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts: Local Three.js with fallback, Audio, Player, World, Game -->
+    <script src="libs/three.min.js"></script>
+    <script>
+        // Fallback to CDN if local file fails for any unexpected reason
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+        }
+    </script>
+    <script src="js/audio.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
