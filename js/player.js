@@ -286,9 +286,64 @@ class Player {
         // 3. BUILD THE SPREADING GLIDER WINGS (Ales dinàmiques)
         this.buildGliderWings();
 
+        // 4. LOAD HIGH QUALITY CUSTOM 3D GLB MODEL
+        this.loadCustomGLB('models/skyebrowse-3d-model.glb');
+
         // Add to Three.js scene
         this.root.position.copy(this.position);
         this.scene.add(this.root);
+    }
+
+    loadCustomGLB(url) {
+        if (typeof THREE.GLTFLoader === 'undefined') return;
+
+        const loader = new THREE.GLTFLoader();
+        loader.load(url, (gltf) => {
+            const model = gltf.scene;
+
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) {
+                        child.geometry.computeVertexNormals();
+                    }
+                    if (child.material) {
+                        child.material.side = THREE.DoubleSide;
+                        child.material.roughness = 0.55;
+                        child.material.metalness = 0.1;
+                    }
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+
+            // Calculate bounding box and scale to standard height (~1.8m)
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+
+            const targetHeight = 1.85;
+            const scale = targetHeight / (size.y || 1.0);
+            model.scale.set(scale, scale, scale);
+
+            // Re-center model so feet touch ground at Y = 0 and center is at (0, 0)
+            const scaledBox = new THREE.Box3().setFromObject(model);
+            model.position.x = -center.x * scale;
+            model.position.y = -scaledBox.min.y;
+            model.position.z = -center.z * scale;
+            model.rotation.y = Math.PI; // Face forward into the world!
+
+            this.customModelGroup = new THREE.Group();
+            this.customModelGroup.add(model);
+            this.characterGroup.add(this.customModelGroup);
+
+            // Hide the fallback procedural geometry
+            if (this.goatGroup) this.goatGroup.visible = false;
+            if (this.riderGroup) this.riderGroup.visible = false;
+
+            console.log('✅ Model 3D GLB carregat i optimitzat amb èxit!', { size, scale });
+        }, undefined, (err) => {
+            console.log('Utilitzant model procedural de suport:', err);
+        });
     }
 
     // --- 1. THE GOAT MESH ---
