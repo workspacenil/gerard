@@ -16,8 +16,8 @@ class Player {
         // Position & Kinematics
         this.position = new THREE.Vector3(0, 8, 0);
         this.velocity = new THREE.Vector3(0, 0, 0);
-        this.rotation = 0; // Y-rotation angle
-        this.targetRotation = 0;
+        this.rotation = Math.PI; // Y-rotation angle (faces forward into world along -Z at spawn)
+        this.targetRotation = Math.PI;
         this.bankAngle = 0; // Roll angle when turning/gliding
         this.pitchAngle = 0; // Pitch angle when diving/climbing
 
@@ -330,7 +330,7 @@ class Player {
             model.position.x = -center.x * scale;
             model.position.y = -scaledBox.min.y;
             model.position.z = -center.z * scale;
-            model.rotation.y = Math.PI; // Face forward into the world!
+            model.rotation.y = 0; // Model native front is +Z, aligned with characterGroup
 
             this.customModelGroup = new THREE.Group();
             this.customModelGroup.add(model);
@@ -1522,6 +1522,9 @@ class Player {
     respawn() {
         this.position.copy(this.checkpoint);
         this.velocity.set(0, 0, 0);
+        this.rotation = Math.PI;
+        this.targetRotation = Math.PI;
+        if (this.meshContainer) this.meshContainer.rotation.y = Math.PI;
         this.isGliding = false;
         this.isDashing = false;
         this.isGroundPounding = false;
