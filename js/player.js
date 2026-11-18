@@ -31,18 +31,18 @@ class Player {
 
         // Timers & Cooldowns
         this.dashCooldown = 0;
-        this.dashMaxCooldown = 1.2;
+        this.dashMaxCooldown = 0.8;
         this.dashTimer = 0;
         this.coyoteTimer = 0;
         this.jumpBufferTimer = 0;
 
-        // Movement Constants & Tuning
+        // Movement Constants & Tuning (Permissiu, còmode i àgil)
         this.walkSpeed = 14;
         this.sprintSpeed = 23;
         this.glideSpeed = 18;
         this.dashSpeed = 46;
-        this.jumpForce = 18;
-        this.doubleJumpForce = 16;
+        this.jumpForce = 18.5;
+        this.doubleJumpForce = 17.0;
         this.gravity = 36;
         this.glideGravity = 5.2; // Gentle descent while gliding
         this.terminalVelocity = 48;
@@ -1078,16 +1078,16 @@ class Player {
             this.dashCooldown -= dt;
         }
 
-        // Coyote Time & Jump Buffer
+        // Coyote Time & Jump Buffer (Generós i permissiu per facilitar el control)
         if (this.isGrounded) {
-            this.coyoteTimer = 0.16;
+            this.coyoteTimer = 0.28;
             this.canDoubleJump = true;
         } else {
             this.coyoteTimer -= dt;
         }
 
         if (input.jumpJustPressed) {
-            this.jumpBufferTimer = 0.16;
+            this.jumpBufferTimer = 0.28;
         } else {
             this.jumpBufferTimer -= dt;
         }

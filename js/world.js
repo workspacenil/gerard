@@ -154,6 +154,9 @@ class World {
         this.createFloatingIsland(new THREE.Vector3(0, 0, 0), 48, 18);
         this.createTempleRuins(new THREE.Vector3(0, 0, 0));
 
+        // Bouncy Temple Jump Pad (launches player straight up to grab Key 0 on colonnade!)
+        this.templeJumpPad = this.createJumpPad(new THREE.Vector3(0, 1.5, -4), 25);
+
         // Gate 1 (Forcefield Barrier blocking exit to Level 2)
         this.gate1 = this.createEnergyGate(
             new THREE.Vector3(42, 4, 0),
@@ -165,9 +168,9 @@ class World {
         // Altar Pad on Island 1 (Discharges 3 Relic Keys)
         this.altarPad = this.createAltarPad(new THREE.Vector3(25, 1.5, 0));
 
-        // 3 Relic Keys hidden across Island 1
-        this.createRelicKey(0, new THREE.Vector3(0, 13.5, 0));       // On top of central temple colonnade!
-        this.createRelicKey(1, new THREE.Vector3(-22, 4.2, 22));     // Eastern ancient ruins
+        // 3 Relic Keys with beacons
+        this.createRelicKey(0, new THREE.Vector3(0, 13.5, 0));       // On top of central temple colonnade (accessible via templeJumpPad!)
+        this.createRelicKey(1, new THREE.Vector3(-22, 3.5, 22));     // Eastern ancient ruins
         this.createRelicKey(2, new THREE.Vector3(-26, 3.5, -24));    // Western clifftop overlook
 
         // Jump Pad 1 (behind Gate 1, launches to Stepping Platforms)
@@ -200,19 +203,19 @@ class World {
         this.createSequencePillar(1, new THREE.Vector3(185, 21.5, 26), 0xa855f7, "2: Astral");
         this.createSequencePillar(2, new THREE.Vector3(215, 21.5, -18), 0xffb800, "3: Solar");
 
-        // 2 Non-Intersecting Moving Platforms between Level 2 and Level 3 (Large 16x16 hover-barges!)
+        // 2 Non-Intersecting Moving Platforms between Level 2 and Level 3 (Large 16x16 hover-barges, smooth easy speed)
         this.platM1 = this.createMovingPlatform(
             new THREE.Vector3(265, 28, -14),
             new THREE.Vector3(265, 28, 14),
             new THREE.Vector3(16, 3, 16),
-            0.55
+            0.32
         );
 
         this.platM2 = this.createMovingPlatform(
             new THREE.Vector3(315, 34, 14),
             new THREE.Vector3(315, 34, -14),
             new THREE.Vector3(16, 3, 16),
-            0.50
+            0.30
         );
 
         // Speed Ring to assist glide between M1 and M2
@@ -394,22 +397,40 @@ class World {
         const group = new THREE.Group();
         group.position.copy(pos);
 
-        const geo = new THREE.OctahedronGeometry(1.1, 0);
+        const geo = new THREE.OctahedronGeometry(1.2, 0);
         const mat = new THREE.MeshStandardMaterial({
             color: 0x00f0ff,
             emissive: 0x00f0ff,
-            emissiveIntensity: 1.8,
+            emissiveIntensity: 2.2,
             roughness: 0.1
         });
         const mesh = new THREE.Mesh(geo, mat);
         group.add(mesh);
 
         // Surrounding orbital ring
-        const ringGeo = new THREE.TorusGeometry(1.8, 0.08, 8, 24);
+        const ringGeo = new THREE.TorusGeometry(1.9, 0.09, 8, 24);
         const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = Math.PI / 2;
         group.add(ring);
+
+        // Skyward Beacon Light Beam (visible across the island so it makes complete sense!)
+        const beamGeo = new THREE.CylinderGeometry(0.3, 0.6, 36, 12);
+        beamGeo.translate(0, 18, 0);
+        const beamMat = new THREE.MeshBasicMaterial({
+            color: 0x00f0ff,
+            transparent: true,
+            opacity: 0.35,
+            blending: THREE.AdditiveBlending
+        });
+        const beam = new THREE.Mesh(beamGeo, beamMat);
+        group.add(beam);
+
+        // Pedestal base
+        const pedGeo = new THREE.CylinderGeometry(1.1, 1.4, 1.4, 12);
+        pedGeo.translate(0, -1.1, 0);
+        const ped = new THREE.Mesh(pedGeo, this.marbleMat);
+        group.add(ped);
 
         this.scene.add(group);
 
@@ -419,8 +440,75 @@ class World {
             group: group,
             mesh: mesh,
             ring: ring,
+            beam: beam,
             collected: false
         });
+    }
+
+    createCloudOrb(pos, orbId) {
+        // Fluffy mystery cloud with a secret golden orb hidden inside!
+        const cloudGroup = new THREE.Group();
+        cloudGroup.position.copy(pos);
+
+        const cloudMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.85,
+            transparent: true,
+            opacity: 0.85
+        });
+
+        // Puffy cloud puffs surrounding the center
+        const puffOffsets = [
+            [0, 0, 0, 3.6],
+            [-2.2, -0.4, 0.5, 2.8],
+            [2.2, -0.3, -0.4, 3.0],
+            [0.4, 0.8, -1.2, 2.6],
+            [-0.8, -0.2, 1.8, 2.7],
+            [1.2, 0.4, 1.4, 2.5]
+        ];
+
+        puffOffsets.forEach(([px, py, pz, radius]) => {
+            const puffGeo = new THREE.DodecahedronGeometry(radius, 1);
+            const puff = new THREE.Mesh(puffGeo, cloudMat);
+            puff.position.set(px, py, pz);
+            cloudGroup.add(puff);
+        });
+
+        this.scene.add(cloudGroup);
+
+        // Hidden Golden Celestial Orb inside cloud
+        const orbGeo = new THREE.OctahedronGeometry(0.85, 0);
+        const orbMat = new THREE.MeshStandardMaterial({
+            color: 0xffdd00,
+            emissive: 0xffaa00,
+            emissiveIntensity: 2.5,
+            roughness: 0.1
+        });
+        const orbMesh = new THREE.Mesh(orbGeo, orbMat);
+        orbMesh.position.copy(pos);
+        this.scene.add(orbMesh);
+
+        // Glowing orbital ring inside the cloud
+        const ringGeo = new THREE.TorusGeometry(1.5, 0.08, 8, 24);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xffe600, transparent: true, opacity: 0.8 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.copy(pos);
+        ring.rotation.x = Math.PI / 2;
+        this.scene.add(ring);
+
+        const orbObj = {
+            id: orbId,
+            originalPos: pos.clone(),
+            pos: pos.clone(),
+            mesh: orbMesh,
+            ring: ring,
+            cloudGroup: cloudGroup,
+            isCloudSecret: true,
+            collected: false
+        };
+
+        this.orbs.push(orbObj);
+        return orbObj;
     }
 
     createSequenceGuide(pos) {
@@ -459,12 +547,30 @@ class World {
         const crystalMat = new THREE.MeshStandardMaterial({
             color: colorHex,
             emissive: colorHex,
-            emissiveIntensity: 0.5,
+            emissiveIntensity: 0.8,
             roughness: 0.2
         });
         const crystal = new THREE.Mesh(crystalGeo, crystalMat);
         crystal.position.y = 3.2;
         group.add(crystal);
+
+        // Number Badge crown above each pillar (1, 2, 3)
+        const numGroup = new THREE.Group();
+        numGroup.position.set(0, 4.8, 0);
+
+        const haloGeo = new THREE.TorusGeometry(0.8, 0.08, 8, 20);
+        haloGeo.rotateX(Math.PI / 2);
+        const haloMesh = new THREE.Mesh(haloGeo, new THREE.MeshBasicMaterial({ color: colorHex }));
+        numGroup.add(haloMesh);
+
+        const dotCount = id + 1;
+        for (let d = 0; d < dotCount; d++) {
+            const dotGeo = new THREE.SphereGeometry(0.18, 8, 8);
+            const dotMesh = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: colorHex }));
+            dotMesh.position.set((d - (dotCount - 1) / 2) * 0.45, 0.35, 0);
+            numGroup.add(dotMesh);
+        }
+        group.add(numGroup);
 
         this.scene.add(group);
 
@@ -473,6 +579,7 @@ class World {
             pos: pos.clone(),
             group: group,
             crystal: crystal,
+            numGroup: numGroup,
             colorHex: colorHex,
             activated: false
         });
@@ -667,7 +774,6 @@ class World {
             // Flight to Level 2 (Stepping Stones & Speed Ring)
             new THREE.Vector3(60, 10, -3),
             new THREE.Vector3(76, 12, -6),
-            new THREE.Vector3(94, 14, 0),
             new THREE.Vector3(112, 17, 6),
             // Level 2
             new THREE.Vector3(160, 23.5, -12),
@@ -675,7 +781,6 @@ class World {
             new THREE.Vector3(205, 28, -8),
             // Flight to Level 3 (Moving Hover-Barges)
             new THREE.Vector3(265, 31, 0),
-            new THREE.Vector3(290, 34, 0),
             new THREE.Vector3(315, 37, 0),
             // Level 3
             new THREE.Vector3(380, 43.5, -16),
@@ -700,6 +805,13 @@ class World {
             this.scene.add(mesh);
             this.orbs.push({ id: idx, originalPos: pt.clone(), pos: pt.clone(), mesh: mesh, collected: false });
         });
+
+        // 5 Secret Cloud Orbs (Els Núvols Màgics que amaguen orbes a dins!)
+        this.createCloudOrb(new THREE.Vector3(-26, 4.5, 18), 101);   // Island 1 clifftop cloud
+        this.createCloudOrb(new THREE.Vector3(94, 13.0, 0), 102);    // Stepping Stones aerial flight cloud
+        this.createCloudOrb(new THREE.Vector3(170, 24.5, -24), 103); // Island 2 mystery waterfall cloud
+        this.createCloudOrb(new THREE.Vector3(290, 33.5, 0), 104);   // Hover-barges glide cloud
+        this.createCloudOrb(new THREE.Vector3(425, 44.5, -20), 105); // Island 3 temple terrace cloud
     }
 
     createClouds() {
@@ -811,19 +923,31 @@ class World {
             this.updatePlatformBounds(p);
         }
 
-        // 2. PUZZLE 1: Relic Keys & Altar Pad
+        // 2. PUZZLE 1: Relic Keys & Altar Pad (Fàcil i intuïtiu)
         for (let i = 0; i < this.relicKeys.length; i++) {
             const r = this.relicKeys[i];
             if (!r.collected) {
                 r.mesh.rotation.y += dt * 2.5;
                 r.ring.rotation.z += dt * 1.5;
-                if (player.position.distanceTo(r.pos) < 2.0) {
+                if (r.beam) r.beam.rotation.y += dt * 0.5;
+                if (player.position.distanceTo(r.pos) < 2.5) {
                     r.collected = true;
                     r.group.visible = false;
                     this.relicsCollected++;
                     window.audioManager.playKeyCollect();
                     this.spawnOrbCollectBurst(r.pos);
                     if (callbacks.onRelicCollected) callbacks.onRelicCollected(this.relicsCollected, 3);
+
+                    // Auto-unlock Gate 1 when all 3 keys are collected!
+                    if (this.relicsCollected >= 3 && this.gate1 && this.gate1.active) {
+                        if (this.altarPad) {
+                            this.altarPad.activated = true;
+                            this.altarPad.mesh.material.emissiveIntensity = 2.5;
+                        }
+                        this.dissolveGate(this.gate1);
+                        this.currentLevel = 2;
+                        if (callbacks.onLevelAdvanced) callbacks.onLevelAdvanced(2, "Nivell 2: Les Agulles de Cristall");
+                    }
                 }
             }
         }
@@ -839,19 +963,20 @@ class World {
             }
         }
 
-        // 3. PUZZLE 2: Sequence Pillars
+        // 3. PUZZLE 2: Sequence Pillars (Pas a pas clar i guiat)
         if (this.currentLevel >= 2 && this.gate2 && this.gate2.active) {
             for (let i = 0; i < this.sequencePillars.length; i++) {
                 const sp = this.sequencePillars[i];
                 sp.crystal.rotation.y += dt * 2.0;
+                if (sp.numGroup) sp.numGroup.rotation.y += dt * 1.2;
 
                 const dist = player.position.distanceTo(sp.pos);
-                if (dist < 2.8 && !sp.activated) {
+                if (dist < 3.2 && !sp.activated) {
                     const expectedId = this.sequenceTarget[this.sequenceCurrentStep];
                     if (sp.id === expectedId) {
                         // Correct touch!
                         sp.activated = true;
-                        sp.crystal.material.emissiveIntensity = 3.0;
+                        sp.crystal.material.emissiveIntensity = 3.5;
                         this.sequenceCurrentStep++;
                         window.audioManager.playRuneTouch(true);
                         this.spawnExpandingRing(sp.pos, sp.colorHex, 1.0, 6.0);
@@ -860,81 +985,50 @@ class World {
                             // Puzzle 2 solved!
                             this.dissolveGate(this.gate2);
                             this.currentLevel = 3;
-                            if (callbacks.onLevelAdvanced) callbacks.onLevelAdvanced(3, "Nivell 3: La Farga Temporal");
+                            if (callbacks.onLevelAdvanced) callbacks.onLevelAdvanced(3, "Nivell 3: La Farga de l'Àpex");
                         } else {
                             if (callbacks.onSequenceStep) callbacks.onSequenceStep(this.sequenceCurrentStep, 3);
                         }
                     } else {
-                        // Wrong pillar! Reset puzzle
+                        // Soft hint sound if touching out of order without harsh reset
                         window.audioManager.playRuneTouch(false);
-                        this.sequenceCurrentStep = 0;
-                        this.sequencePillars.forEach(p => {
-                            p.activated = false;
-                            p.crystal.material.emissiveIntensity = 0.5;
-                        });
-                        if (callbacks.onSequenceFail) callbacks.onSequenceFail();
                     }
                 }
             }
         }
 
-        // 4. PUZZLE 3: Timed Pressure Plates
+        // 4. PUZZLE 3: Pressure Plates (Activació permanent, sense temporitzador estressant!)
         if (this.currentLevel >= 3 && this.gate3 && this.gate3.active) {
-            // Check plate steps
             for (let i = 0; i < this.timedPlates.length; i++) {
                 const tp = this.timedPlates[i];
-                if (!tp.activated && player.position.distanceTo(tp.pos) < 2.2 && player.isGrounded) {
+                if (!tp.activated && player.position.distanceTo(tp.pos) < 2.5 && player.isGrounded) {
                     tp.activated = true;
                     tp.plateMesh.position.y = 0.08; // Physical depress
-                    tp.plateMesh.material.emissiveIntensity = 2.5;
+                    tp.plateMesh.material.emissiveIntensity = 3.0;
+                    tp.plateMesh.material.color.setHex(0x00ff88);
+                    tp.plateMesh.material.emissive.setHex(0x00ff88);
                     window.audioManager.playRuneTouch(true);
+                    this.spawnExpandingRing(tp.pos, 0x00ff88, 1.5, 7.0);
 
-                    // Start timer if not already active
-                    if (!this.timerActive) {
-                        this.timerActive = true;
-                        this.timerRemaining = this.timerSeconds;
-                    }
+                    const activeCount = this.timedPlates.filter(p => p.activated).length;
+                    if (callbacks.onPlateActivated) callbacks.onPlateActivated(activeCount, 3);
 
                     // Check if all 3 plates active
                     const allActive = this.timedPlates.every(p => p.activated);
                     if (allActive) {
-                        this.timerActive = false;
                         this.dissolveGate(this.gate3);
                         this.currentLevel = 4;
                         if (callbacks.onLevelAdvanced) callbacks.onLevelAdvanced(4, "Nivell 4: L'Àpex Suprem");
                     }
                 }
             }
-
-            // Countdown timer ticking
-            if (this.timerActive) {
-                this.timerRemaining -= dt;
-                if (callbacks.onTimerUpdate) callbacks.onTimerUpdate(Math.ceil(this.timerRemaining));
-
-                if (Math.floor(this.timerRemaining) !== Math.floor(this.timerRemaining + dt)) {
-                    window.audioManager.playTimerTick();
-                }
-
-                if (this.timerRemaining <= 0) {
-                    // Time out! Reset plates
-                    this.timerActive = false;
-                    this.timerRemaining = this.timerSeconds;
-                    this.timedPlates.forEach(p => {
-                        p.activated = false;
-                        p.plateMesh.position.y = 0.25;
-                        p.plateMesh.material.emissiveIntensity = 0.4;
-                    });
-                    window.audioManager.playRuneTouch(false);
-                    if (callbacks.onTimerExpired) callbacks.onTimerExpired();
-                }
-            }
         }
 
-        // 5. Jump Pads
+        // 5. Jump Pads (Generós i còmode de trepitjar)
         for (let i = 0; i < this.jumpPads.length; i++) {
             const pad = this.jumpPads[i];
             const dist = player.position.distanceTo(pad.pos);
-            if (dist < pad.radius && player.position.y >= pad.pos.y - 0.2 && player.position.y <= pad.pos.y + 1.2) {
+            if (dist < pad.radius + 0.6 && player.position.y >= pad.pos.y - 0.4 && player.position.y <= pad.pos.y + 1.6) {
                 player.velocity.y = pad.power;
                 player.isGrounded = false;
                 window.audioManager.playBouncePad();
@@ -946,7 +1040,7 @@ class World {
         for (let i = 0; i < this.speedRings.length; i++) {
             const ring = this.speedRings[i];
             if (ring.cooldown > 0) ring.cooldown -= dt;
-            if (player.position.distanceTo(ring.pos) < ring.radius && ring.cooldown <= 0) {
+            if (player.position.distanceTo(ring.pos) < ring.radius + 0.8 && ring.cooldown <= 0) {
                 ring.cooldown = 2.0;
                 const forward = new THREE.Vector3(Math.sin(player.targetRotation), 0.2, Math.cos(player.targetRotation)).normalize();
                 player.velocity.x = forward.x * 35;
@@ -964,30 +1058,41 @@ class World {
             this.apexRing.rotation.z += dt * 0.8;
 
             if (this.currentLevel >= 4 && !this.apexReached) {
-                if (player.position.distanceTo(this.apexPos) < 16.0 && player.position.y >= this.apexPos.y - 1.0) {
+                if (player.position.distanceTo(this.apexPos) < 18.0 && player.position.y >= this.apexPos.y - 1.0) {
                     this.apexReached = true;
                     if (callbacks.onVictory) callbacks.onVictory();
                 }
             }
         }
 
-        // 8. Collectible Orbs
+        // 8. Collectible Orbs & Secret Cloud Orbs
         for (let i = 0; i < this.orbs.length; i++) {
             const orb = this.orbs[i];
             if (orb.collected) continue;
 
             orb.mesh.rotation.y += dt * 2.0;
+            if (orb.ring) orb.ring.rotation.z += dt * 1.5;
             orb.pos.y = orb.originalPos.y + Math.sin(time * 3 + orb.id) * 0.35;
             orb.mesh.position.y = orb.pos.y;
+            if (orb.ring) orb.ring.position.y = orb.pos.y;
 
             const dist = player.position.distanceTo(orb.mesh.position);
-            if (dist < 6.5) {
+            // Magnetic attraction
+            if (dist < 7.0) {
                 const dir = new THREE.Vector3().subVectors(player.position, orb.mesh.position).normalize();
-                orb.mesh.position.addScaledVector(dir, (6.5 - dist) * 7.0 * dt);
+                orb.mesh.position.addScaledVector(dir, (7.0 - dist) * 7.5 * dt);
+                if (orb.ring) orb.ring.position.copy(orb.mesh.position);
             }
-            if (dist < 1.4) {
+            if (dist < 1.8) {
                 orb.collected = true;
                 orb.mesh.visible = false;
+                if (orb.ring) orb.ring.visible = false;
+
+                // Cloud Orb discovery delight!
+                if (orb.isCloudSecret && orb.cloudGroup) {
+                    orb.cloudGroup.scale.set(1.25, 1.25, 1.25);
+                }
+
                 window.audioManager.playOrbCollect();
                 this.spawnOrbCollectBurst(orb.mesh.position);
                 if (callbacks.onOrbCollected) callbacks.onOrbCollected(orb);
