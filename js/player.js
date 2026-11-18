@@ -308,8 +308,15 @@ class Player {
                     }
                     if (child.material) {
                         child.material.side = THREE.DoubleSide;
-                        child.material.roughness = 0.55;
-                        child.material.metalness = 0.1;
+                        child.material.roughness = 0.7;
+                        child.material.metalness = 0.05;
+                        if (child.material.map) {
+                            child.material.map.encoding = THREE.LinearEncoding;
+                        }
+                        // Il·luminació suau de suport per aclarir ombres fosques sense sobreexposar
+                        child.material.emissiveMap = child.material.map;
+                        child.material.emissive = new THREE.Color(0xffffff);
+                        child.material.emissiveIntensity = 0.18;
                     }
                     child.castShadow = true;
                     child.receiveShadow = true;
