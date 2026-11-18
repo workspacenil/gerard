@@ -316,20 +316,22 @@ class Player {
                 }
             });
 
-            // Calculate bounding box and scale to standard height (~1.8m)
+            // Calculate bounding box and scale to standard height (~1.85m) with robust, chubbier girth
             const box = new THREE.Box3().setFromObject(model);
             const size = box.getSize(new THREE.Vector3());
-            const center = box.getCenter(new THREE.Vector3());
 
             const targetHeight = 1.85;
-            const scale = targetHeight / (size.y || 1.0);
-            model.scale.set(scale, scale, scale);
+            const scaleY = targetHeight / (size.y || 1.0);
+            const scaleX = scaleY * 1.48; // Més gras i ample (silueta robusta de videojoc)
+            const scaleZ = scaleY * 1.28; // Més volum corporal
+            model.scale.set(scaleX, scaleY, scaleZ);
 
             // Re-center model so feet touch ground at Y = 0 and center is at (0, 0)
             const scaledBox = new THREE.Box3().setFromObject(model);
-            model.position.x = -center.x * scale;
+            const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+            model.position.x = -scaledCenter.x;
             model.position.y = -scaledBox.min.y;
-            model.position.z = -center.z * scale;
+            model.position.z = -scaledCenter.z;
             model.rotation.y = 0; // Model native front is +Z, aligned with characterGroup
 
             this.customModelGroup = new THREE.Group();
@@ -1436,7 +1438,7 @@ class Player {
     handleCollisions(world, dt) {
         if (!world) return;
 
-        const playerRadius = 0.52;
+        const playerRadius = 0.58;
         const playerHeight = 1.85;
         let onGround = false;
 
